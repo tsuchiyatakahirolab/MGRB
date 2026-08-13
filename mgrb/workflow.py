@@ -60,8 +60,10 @@ def execute_build(request: BuildRequest, repository_root: Path) -> BuildResult:
     qgis_output = package_dir / "qgis"
     config_dir = root / ".tmp/qgis-profile"
     local_app_data = root / ".tmp/qgis-localappdata"
+    matplotlib_cache = root / ".tmp/matplotlib"
     config_dir.mkdir(parents=True, exist_ok=True)
     local_app_data.mkdir(parents=True, exist_ok=True)
+    matplotlib_cache.mkdir(parents=True, exist_ok=True)
     environment = os.environ.copy()
     environment.update(
         {
@@ -70,6 +72,7 @@ def execute_build(request: BuildRequest, repository_root: Path) -> BuildResult:
             "QGIS_AUTH_DB_DIR_PATH": str(config_dir),
             "XDG_CONFIG_HOME": str(config_dir),
             "LOCALAPPDATA": str(local_app_data),
+            "MPLCONFIGDIR": str(matplotlib_cache),
         }
     )
     qgis_args = [
