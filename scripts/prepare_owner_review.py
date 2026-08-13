@@ -221,8 +221,12 @@ def main() -> None:
     parser.add_argument("--no-visible-footer", action="store_true")
     args = parser.parse_args()
     if args.force and DERIVED.exists():
+        gitkeep = DERIVED / ".gitkeep"
+        gitkeep_content = gitkeep.read_bytes() if gitkeep.exists() else None
         shutil.rmtree(DERIVED)
         DERIVED.mkdir(parents=True)
+        if gitkeep_content is not None:
+            gitkeep.write_bytes(gitkeep_content)
 
     acquisitions = []
     extracted = RAW / "extracted"
