@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+# Do not commit upstream or user-supplied data by default
+data/raw/*
+!data/raw/.gitkeep
+data/derived/*
+!data/derived/.gitkeep
+# QGIS transient files
+*.qgz~
+*.qgs~
+*.aux.xml

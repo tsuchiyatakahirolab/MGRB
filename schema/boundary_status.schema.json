@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MGRB maritime boundary status",
+  "type": "object",
+  "required": ["feature_id", "source", "source_date", "boundary_type", "status", "citation"],
+  "properties": {
+    "feature_id": {"type": "string"},
+    "source": {"type": "string"},
+    "source_date": {"type": "string"},
+    "boundary_type": {"enum": ["baseline", "territorial_sea", "contiguous_zone", "eez_reference", "agreement_boundary", "claim_line", "disputed_area", "other"]},
+    "status": {"enum": ["treaty_delimited", "officially_declared", "provider_reference", "computed_reference", "disputed", "uncertain"]},
+    "claimant": {"type": ["string", "null"]},
+    "counterparty": {"type": ["string", "null"]},
+    "method": {"type": ["string", "null"]},
+    "citation": {"type": "string"},
+    "notes": {"type": ["string", "null"]}
+  },
+  "additionalProperties": true
+}

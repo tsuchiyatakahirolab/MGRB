@@ -1,0 +1,3 @@
+Run from the MGRB repository root.
+
+Read `work/codex-v1-cartography/CODEX_PROMPT.md` completely and execute it. Treat the current MGRB repository as the canonical source tree. Work on branch `feat/v1-cartography-system`. Do not publish or tag v1.0. Do not declare completion until all automated acceptance criteria pass and the required real QGIS visual-review artifacts are generated. Stop at `READY_FOR_OWNER_VISUAL_REVIEW` and report exact commands, tests, output paths, branch, and start/end commit SHAs.

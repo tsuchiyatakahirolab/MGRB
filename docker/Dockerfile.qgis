@@ -1,0 +1,19 @@
+FROM qgis/qgis:3.44.12
+
+ENV QT_QPA_PLATFORM=offscreen \
+    DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      python3-geopandas \
+      python3-rasterio \
+      python3-yaml \
+      python3-jsonschema \
+      python3-pytest \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+COPY . /workspace
+ENV PYTHONPATH=/workspace
+
+CMD ["python3", "scripts/qgis_smoke.py"]

@@ -1,0 +1,21 @@
+regions:
+  taiwan_east_south:
+    bbox_180: [119.0, 18.5, 124.5, 25.5]
+    purpose: "Taiwan east and south, including the Luzon Strait"
+    display_crs: "+proj=laea +lat_0=22 +lon_0=122 +datum=WGS84 +units=m +no_defs +type=crs"
+    layout_scale: "local"
+  east_asia_seas:
+    bbox_180: [115.0, 15.0, 145.0, 45.0]
+    purpose: "East China Sea, Taiwan, Philippine Sea and adjacent waters"
+    display_crs: "+proj=laea +lat_0=30 +lon_0=130 +datum=WGS84 +units=m +no_defs +type=crs"
+    layout_scale: "regional"
+  west_pacific:
+    bbox_180: [100.0, -10.0, 179.999, 55.0]
+    purpose: "Western Pacific regional overview west of the antimeridian"
+    display_crs: "+proj=robin +lon_0=150 +datum=WGS84 +units=m +no_defs +type=crs"
+    layout_scale: "theatre"
+  pacific_360:
+    bbox_360: [100.0, -60.0, 300.0, 70.0]
+    purpose: "Pacific-wide continuous-longitude derivative for antimeridian-spanning workflows"
+    display_crs: "+proj=robin +lon_0=180 +datum=WGS84 +units=m +no_defs +type=crs"
+    layout_scale: "theatre"

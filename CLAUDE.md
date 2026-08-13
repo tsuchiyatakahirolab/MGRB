@@ -1,0 +1,1 @@
+Read and follow `AGENTS.md` as the authoritative repository instructions. Use shell/Python/PyQGIS/GDAL automation instead of manual GUI-only steps. Never place licensed or non-public analytical data in this repository.

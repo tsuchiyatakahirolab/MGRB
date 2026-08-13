@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MGRB source manifest record",
+  "type": "object",
+  "required": ["source_id", "provider", "version_or_date", "retrieved_at", "licence", "citation"],
+  "properties": {
+    "source_id": {"type": "string"},
+    "provider": {"type": "string"},
+    "version_or_date": {"type": "string"},
+    "retrieved_at": {"type": "string"},
+    "licence": {"type": "string"},
+    "citation": {"type": "string"},
+    "original_url": {"type": "string"},
+    "sha256": {"type": "string"},
+    "redistribution": {"type": "string"}
+  }
+}

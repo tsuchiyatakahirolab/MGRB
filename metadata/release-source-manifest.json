@@ -1,0 +1,390 @@
+{
+  "schema": "mgrb-provenance-1.0",
+  "mgrb_version": "1.0.0",
+  "generated_at_utc": "2026-08-12T14:17:59+00:00",
+  "git_commit": null,
+  "build_id": null,
+  "root": "MGRB-v1.0",
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "bytes": 612,
+      "sha256": "cac9e61a23faf8bdeabc7840da4a5207b8a6fa4302c00f6293544d980722512d"
+    },
+    {
+      "path": ".github/workflows/qgis.yml",
+      "bytes": 1051,
+      "sha256": "e718f25b8c5d8e6442dfe264d114c0017fc5a39db2ed101dce7d84f15e7368e9"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 224,
+      "sha256": "81ad84abb049dbd9482bef6a4e97cb216b2fefa6991ea3981451e9cac4518af0"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 1458,
+      "sha256": "791ad3b37e5ffd1d424ca6ec54f1e078b6467c2d53fee3ad068ed7ad3ac411c6"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 700,
+      "sha256": "ef04c1801d5575d636a7d92043f2ced24a54c03ac78eb10831232d8626e004e6"
+    },
+    {
+      "path": "CITATION.cff",
+      "bytes": 454,
+      "sha256": "ec20d4c05a54850799da29dd3d026e0112cc0e2cf2b34bd6ad2e3360805c6c74"
+    },
+    {
+      "path": "CITATION_POLICY.md",
+      "bytes": 1795,
+      "sha256": "f54d13f1fa47a22b7778bdbffcb9ad1ccb8968936b82a2a6a867f31df4200e7b"
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 219,
+      "sha256": "9372130f40abe15a33fe7679cd1df1c9778fa8f1695281843e7204856e1c1051"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "bytes": 777,
+      "sha256": "1c86785baf49544d4aebd590a9ccb481d3e24479e21d1b700f409475bc4e5ac5"
+    },
+    {
+      "path": "GOVERNANCE.md",
+      "bytes": 600,
+      "sha256": "18b0d3b93ad5cdf4deebd6b19113c46b0cc3c3f05d74047dbf08fde8ea4b4c73"
+    },
+    {
+      "path": "LICENSE-CODE",
+      "bytes": 632,
+      "sha256": "62087ddd0fc4b67a7cb3eba46eebc070c6de0a89537df389dee1e1ca88d796e3"
+    },
+    {
+      "path": "LICENSE-CONTENT",
+      "bytes": 317,
+      "sha256": "c62abbac361a3808e570ab79b115f2257d623e52deda6596866de0946f2e6af8"
+    },
+    {
+      "path": "Makefile",
+      "bytes": 514,
+      "sha256": "cc91f6e36c8646940bd6a16c5b064a9a157d0740b7c04843b7b0076917520597"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4771,
+      "sha256": "55ffc0f35b2d959ac72bccefaed3e69f15673e4437f84a866aced883376981a2"
+    },
+    {
+      "path": "RELEASE_READINESS.md",
+      "bytes": 1298,
+      "sha256": "a8193f7bc1d9f87d9fab4b7d1ebd7b5743eacb80a5df82b6cb85e4802f1f22b7"
+    },
+    {
+      "path": "ROADMAP.md",
+      "bytes": 1229,
+      "sha256": "8b5d9ddcb94a01e889311e9d302ca507fe7ca8f43a2a67fed3b5c0fb704b0adf"
+    },
+    {
+      "path": "SECURITY.md",
+      "bytes": 534,
+      "sha256": "7ed36204fec7b80f3c10a84a24529be61f4ec5b529819e706d1c6f1a9e2b78d9"
+    },
+    {
+      "path": "config/regions.yml",
+      "bytes": 1017,
+      "sha256": "f02d7e0cd1e48f0fb86703617bdd8ed0094f47fb4fa4eefd044156bf0b09447c"
+    },
+    {
+      "path": "data/derived/.gitkeep",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/raw/.gitkeep",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docker/Dockerfile.qgis",
+      "bytes": 422,
+      "sha256": "9a43f86116d699fd9225588e2ebaeb560157574146363ada12249b01ec11c9ee"
+    },
+    {
+      "path": "docs/antimeridian.md",
+      "bytes": 1105,
+      "sha256": "3a7c76e21a60ceb929129f8330e4d71d831e4b673b5a248d42c7aa1e0b90df33"
+    },
+    {
+      "path": "docs/architecture.md",
+      "bytes": 733,
+      "sha256": "46019da2c39054e831be7579c30303a48d24815458698d46a52289d97231b2e3"
+    },
+    {
+      "path": "docs/boundary-policy.md",
+      "bytes": 1064,
+      "sha256": "fa41272ded3c6b1893ece82ad4bdee27c3d7d63639d791a35b685907025287c1"
+    },
+    {
+      "path": "docs/data-sources.md",
+      "bytes": 747,
+      "sha256": "46be57b4cb3c0c4f7a4c89744504290a71635a1d5af79c29aec74a696c341bc3"
+    },
+    {
+      "path": "docs/github-release.md",
+      "bytes": 1108,
+      "sha256": "08037d8d2b054e9344af28212782cdec3802f134d81a5122641845595c127840"
+    },
+    {
+      "path": "docs/known-limitations.md",
+      "bytes": 1151,
+      "sha256": "b3fa5936d23fa663ca3b34b4c83ca6af91cd7421ff6a18b43e84ec4099e83cf7"
+    },
+    {
+      "path": "docs/provenance.md",
+      "bytes": 564,
+      "sha256": "dababad3339441c7bdddd96f478e48a277dfaa127fae17b5575fce7cdf9ab687"
+    },
+    {
+      "path": "docs/qgis-automation.md",
+      "bytes": 1283,
+      "sha256": "7045cf6b64480dcb1fc310a3c1a43f05285086bc7410cc6f9703de894f07e19e"
+    },
+    {
+      "path": "docs/release-checklist.md",
+      "bytes": 717,
+      "sha256": "dd5e3fda8026b864a10f5d6a55eccefd1981e6090153b0d6205d8e8d1ed4bf16"
+    },
+    {
+      "path": "docs/site-copy.md",
+      "bytes": 668,
+      "sha256": "b02012a4593130aaf37845f4a42a39be4559bca493336c2cd0df8ff3943b6c79"
+    },
+    {
+      "path": "examples/public-data-only/README.md",
+      "bytes": 329,
+      "sha256": "5ac0f8220f1cd9c94b7c3c917e9f5b7281b4656c999bc7068f7c0f6ad0cb00d4"
+    },
+    {
+      "path": "metadata/README.md",
+      "bytes": 122,
+      "sha256": "51f2e68e68f4fc7bbf0a369020f2153de5968e98c5c43b5bd91993f952fb46a4"
+    },
+    {
+      "path": "metadata/provenance.json",
+      "bytes": 272,
+      "sha256": "3a9c40ade371fa7890d549126c9a3cdd61694a0a97bf544e01494ba246848e7a"
+    },
+    {
+      "path": "metadata/sources.yml",
+      "bytes": 1862,
+      "sha256": "40231ac4c86964dfbf900c4ce690c41a620bb5d83c7dce0d2b6feb719e4daef3"
+    },
+    {
+      "path": "mgrb/__init__.py",
+      "bytes": 70,
+      "sha256": "dbb9b81134d1ea3f55db2ac300c1887eef0780f7391dd398670f62eb40ec5a98"
+    },
+    {
+      "path": "mgrb/__pycache__/__init__.cpython-313.pyc",
+      "bytes": 218,
+      "sha256": "d509553499557f7e002a5c148c3761cdb866df1074a4fdf05694f4679b04f51c"
+    },
+    {
+      "path": "mgrb/__pycache__/builder.cpython-313.pyc",
+      "bytes": 2976,
+      "sha256": "ee9f34c4486b2dff2ee3a71f803b02d39092285f4a38c5e1b1246703a577d81b"
+    },
+    {
+      "path": "mgrb/__pycache__/cli.cpython-313.pyc",
+      "bytes": 5327,
+      "sha256": "c4acfe6aa0f98adec298f298cee85542999cfcfbf9a77cfd0e0f823cafae1675"
+    },
+    {
+      "path": "mgrb/__pycache__/config.cpython-313.pyc",
+      "bytes": 2558,
+      "sha256": "59d7aaaca6c7f8fea29772fe6c74d62910b05d3144327f6c070d517c2460dcc1"
+    },
+    {
+      "path": "mgrb/__pycache__/longitude.cpython-313.pyc",
+      "bytes": 2744,
+      "sha256": "9ed130ad7af813e1053d569d4e589fb07f81066dab27f7747838e37ea320be39"
+    },
+    {
+      "path": "mgrb/__pycache__/provenance.cpython-313.pyc",
+      "bytes": 4628,
+      "sha256": "8318a970ec106c09cb73ac56da75644abcff814a8a751999ebec0930979e3557"
+    },
+    {
+      "path": "mgrb/__pycache__/raster.cpython-313.pyc",
+      "bytes": 7344,
+      "sha256": "0a4214e71f40cd8df51cb0a430cff5aac51d7753d749416d1abfc0a923057fd0"
+    },
+    {
+      "path": "mgrb/__pycache__/vector.cpython-313.pyc",
+      "bytes": 3184,
+      "sha256": "780f7d175e91e1fe4d261c80fb0d31f3a6fa28d99b16baa3990591b476334801"
+    },
+    {
+      "path": "mgrb/builder.py",
+      "bytes": 2235,
+      "sha256": "2c3f728bbceddcde4c01e231444c1ebc04c1373931bfec3d2ad92fbd387454b5"
+    },
+    {
+      "path": "mgrb/cli.py",
+      "bytes": 3108,
+      "sha256": "74ed266ff7e820b87292dab2ff38b5b5c5a3c747fc6780d1423c067c83a99442"
+    },
+    {
+      "path": "mgrb/config.py",
+      "bytes": 1293,
+      "sha256": "7544b2ffeca9abba40a5121baee3b6464c900f81316c28552736a5aff371b351"
+    },
+    {
+      "path": "mgrb/longitude.py",
+      "bytes": 1782,
+      "sha256": "b86806d1835d30110a3bbfbf9d506d45823d9f0d9d3f91980eb68037f364cacf"
+    },
+    {
+      "path": "mgrb/provenance.py",
+      "bytes": 2235,
+      "sha256": "e75b087d5f13026fc2f96a3b8974cc560b8abc78c84ba68c8b4ffc9efbcb446c"
+    },
+    {
+      "path": "mgrb/raster.py",
+      "bytes": 4499,
+      "sha256": "acf1c6ae86f6c831bf00d29be577873d68ada67802b05d7ec79821df09d2cd07"
+    },
+    {
+      "path": "mgrb/vector.py",
+      "bytes": 1948,
+      "sha256": "da64cc7e88fa6652df3bdcdacfc2b5c25087e176cb92158b7295887425601077"
+    },
+    {
+      "path": "paper/jors-draft.md",
+      "bytes": 4698,
+      "sha256": "3ab6262da1b79d76427db09f4d25c2373ff145d5d92e453da5e1a0f4c3e11660"
+    },
+    {
+      "path": "paper/publication-plan.md",
+      "bytes": 1843,
+      "sha256": "b9144c34534e08a743becc801cb9d0ebbdbfc953a6129c8026133f38dfe8218c"
+    },
+    {
+      "path": "pyproject.toml",
+      "bytes": 781,
+      "sha256": "16c920308bdebf17e616ad822de5fca49836e92bb4596e86ff0732bf17c9a3f2"
+    },
+    {
+      "path": "schema/boundary_status.schema.json",
+      "bytes": 906,
+      "sha256": "54fa83370107bab1d703772da262bf1c96561d2e91aa203f684923525ba4aa0a"
+    },
+    {
+      "path": "schema/source_manifest.schema.json",
+      "bytes": 590,
+      "sha256": "84b61d11a80d5bd6a4b214c32f76922e9cc82c9bdd925bfecfc2ed006d58f679"
+    },
+    {
+      "path": "scripts/bootstrap_github.sh",
+      "bytes": 1235,
+      "sha256": "f7bcca55b925669f5d4c729e2ddb50f89aff19d09478179f1a9af6da5022fba2"
+    },
+    {
+      "path": "scripts/build_qgis_projects.py",
+      "bytes": 9127,
+      "sha256": "06ba08b5939439f8e7216ef0d03671ff1f37da93ad9a6e8d575dab66ecf8726b"
+    },
+    {
+      "path": "scripts/fetch_public.py",
+      "bytes": 2545,
+      "sha256": "6913c7d08d46389df3ea918ab96b61ca3c13d8f1fbe8790d43abc2f90978ffbc"
+    },
+    {
+      "path": "scripts/ingest_marine_regions.py",
+      "bytes": 699,
+      "sha256": "2036d9de56b92e7b046a1fdb08c3086bbd33e193935ee87caebf68a406389a42"
+    },
+    {
+      "path": "scripts/make_qgis_fixture.py",
+      "bytes": 2825,
+      "sha256": "32a4e3bda3fb9db4b6b8dab77320d612f744a8c6addce8f9d3ba20eaeb6d6c02"
+    },
+    {
+      "path": "scripts/prepare_gebco.py",
+      "bytes": 623,
+      "sha256": "d38d83d5d15dc7b3731dd99bc159df5878f4bd01ff6d444019887e4139cd64f4"
+    },
+    {
+      "path": "scripts/prepare_vector.py",
+      "bytes": 642,
+      "sha256": "f4fc4159428681354c1c71c70adbfd8d7afb3a9c8e7e46acae2aed0673d0e2ae"
+    },
+    {
+      "path": "scripts/qgis_antimeridian_split.py",
+      "bytes": 982,
+      "sha256": "db16e1cb6416aaa91ee82a7bb2cae1a10ce9713117b3d1738e285bf8ec12f62b"
+    },
+    {
+      "path": "scripts/qgis_smoke.py",
+      "bytes": 672,
+      "sha256": "a61f2e7f71e1fdac7ba0d7bed58171ed379170e031d444a37e4286ebb003103a"
+    },
+    {
+      "path": "styles/bathymetry.qml",
+      "bytes": 353,
+      "sha256": "db19cff3a5e35464629ebff836226b3227a0827b59f86a80d537139e9f8c3fd6"
+    },
+    {
+      "path": "styles/coastline.qml",
+      "bytes": 425,
+      "sha256": "80fdf5b35f956caef0076c2f668c0a228e1b64c6c2c80e4e69f25f9749d84bef"
+    },
+    {
+      "path": "styles/disputed_area.qml",
+      "bytes": 521,
+      "sha256": "2f8850d5ee6a18886af5d6cf5674cf1b73c1ded89deff78f4aa9c36eb6f00e93"
+    },
+    {
+      "path": "styles/land.qml",
+      "bytes": 483,
+      "sha256": "a856fcfede852b2415c4090334e6100bac9318e6bfe74a6b691602f3b15dd3b0"
+    },
+    {
+      "path": "styles/maritime_reference.qml",
+      "bytes": 464,
+      "sha256": "39d0713d4322f5799e20805976d945e31c3a0c4ebff65896a1848b00759fb46f"
+    },
+    {
+      "path": "tests/test_builder.py",
+      "bytes": 1667,
+      "sha256": "f5eea16fda6409d845ae75f0a629dac8d4b16d39665ae852928f86bd12be5e16"
+    },
+    {
+      "path": "tests/test_config.py",
+      "bytes": 396,
+      "sha256": "1c0d27878ae5af352a7b90fec2edca54753ff02707adbceea6a1685ba0453ea4"
+    },
+    {
+      "path": "tests/test_longitude.py",
+      "bytes": 575,
+      "sha256": "39371719458fb2c3d2fd9eeafc4664bbdb8252ea711632bb5463b99bebf744e7"
+    },
+    {
+      "path": "tests/test_provenance.py",
+      "bytes": 706,
+      "sha256": "e87315efaa245c34c73a5f49be67e85f6e6fd3a749164419a464318444690ab4"
+    },
+    {
+      "path": "tests/test_raster.py",
+      "bytes": 1438,
+      "sha256": "0f4f0f0fc22b2fac0787094a538db98805ca335f9b49999e3a503e5a414fb751"
+    },
+    {
+      "path": "tests/test_schemas.py",
+      "bytes": 372,
+      "sha256": "a231ffca600977b7041d1199dd5bdffde6a9082bd6a6ab905298da80e22a74ca"
+    }
+  ]
+}
