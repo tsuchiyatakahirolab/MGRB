@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+
 import os
 from pathlib import Path
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from qgis.core import QgsApplication, QgsProject, QgsVectorLayer  # type: ignore
 

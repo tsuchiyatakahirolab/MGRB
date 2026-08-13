@@ -2,6 +2,14 @@
 
 Every released derived product should be reproducible from a named upstream source version and a versioned MGRB workflow.
 
+Every ordinary build is also self-describing. The generated package includes build,
+source, and style manifests, `SHA256SUMS`, embedded format metadata where supported,
+and an artifact-specific `.mgrb.json` sidecar. Run `mgrb verify GENERATED_FILE` to
+check origin, version/commit lineage, artifact integrity, and manifest consistency.
+Canonical repository, DOI/persistent identifier, signed release-manifest URL/hash,
+and signature URL are explicit nullable fields in `config/product.yml`; populate them
+only when the owner publishes the corresponding canonical resources.
+
 Release checklist:
 
 - Freeze source registry versions/dates.

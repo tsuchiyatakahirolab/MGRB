@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from collections.abc import Iterable
+
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import transform
 

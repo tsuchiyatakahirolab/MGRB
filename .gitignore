@@ -1,4 +1,8 @@
 .venv/
+.cache/
+.tmp/
+.tools/
+mgrb.egg-info/
 __pycache__/
 *.pyc
 .pytest_cache/
@@ -12,3 +16,7 @@ data/derived/*
 *.qgz~
 *.qgs~
 *.aux.xml
+# Generated projects, publication exports, and owner-review package
+qgis-projects/generated/
+outputs/
+build/

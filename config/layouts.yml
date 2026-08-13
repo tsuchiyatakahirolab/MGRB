@@ -1,0 +1,17 @@
+schema_version: "1.0"
+layouts:
+  article_local:
+    page_mm: [210, 148]
+    map_mm: [10, 18, 190, 112]
+    title_pt: 12
+    footer_pt: 6.5
+  article_regional:
+    page_mm: [240, 170]
+    map_mm: [10, 18, 220, 134]
+    title_pt: 12
+    footer_pt: 6.5
+  article_pacific:
+    page_mm: [280, 170]
+    map_mm: [10, 18, 260, 134]
+    title_pt: 12
+    footer_pt: 6.5

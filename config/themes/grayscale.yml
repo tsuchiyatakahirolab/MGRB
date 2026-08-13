@@ -1,0 +1,25 @@
+schema_version: "1.0"
+palette_id: grayscale
+presentation:
+  bathymetry:
+    trench: "#4a4a4a"
+    abyssal: "#606060"
+    deep: "#777777"
+    slope: "#939393"
+    upper_slope: "#b2b2b2"
+    shelf: "#d2d2d2"
+  land: {fill: "#eeeeee", outline: "#444444"}
+  coastline: "#333333"
+  contours: {minor: "#686868", major: "#424242"}
+  hillshade: {opacity: 0.10, blend: multiply}
+  maritime_status:
+    treaty_delimited: "#292929"
+    officially_declared: "#3d3d3d"
+    provider_reference: "#555555"
+    computed_reference: "#696969"
+    disputed: "#202020"
+    uncertain: "#767676"
+  uncertainty: {fill: "#777777", opacity: 0.12, hatch: diagonal}
+  labels: {text: "#202020", halo: "#ffffff"}
+  graticule: "#929292"
+  layout: {background: "#ffffff", frame: "#404040", title: "#202020", footer: "#505050"}

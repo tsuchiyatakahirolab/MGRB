@@ -9,6 +9,7 @@ sources:
     homepage: "https://www.gebco.net/data-products-gridded-bathymetry-data/gebco2026-grid"
     acquisition: "Provider global file, tiles, OPeNDAP, or user-defined subset."
     redistribution: "Public-domain information product subject to GEBCO terms; retain GEBCO attribution and disclaimer."
+    licence: "Public domain; GEBCO terms of use and attribution apply"
     role: "canonical_bathymetry"
   natural_earth_5_1_2:
     title: "Natural Earth Vector"

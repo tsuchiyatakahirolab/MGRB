@@ -1,4 +1,6 @@
-from mgrb.longitude import bbox_360_to_180_parts, lon_to_180, lon_to_360
+from shapely.geometry import LineString
+
+from mgrb.longitude import bbox_360_to_180_parts, lon_to_180, lon_to_360, transform_longitudes
 
 
 def test_longitude_conventions():
@@ -16,3 +18,11 @@ def test_pacific_bbox_splits_at_antimeridian():
         (100, -60, 180.0, 70),
         (-180.0, -60, -60, 70),
     ]
+
+
+def test_crossing_line_is_continuous_in_360_derivative():
+    crossing = LineString([(179.0, 10.0), (-179.0, 11.0)])
+    shifted = transform_longitudes(crossing, "360")
+    longitudes = [coordinate[0] for coordinate in shifted.coords]
+    assert longitudes == [179.0, 181.0]
+    assert max(longitudes) - min(longitudes) == 2.0

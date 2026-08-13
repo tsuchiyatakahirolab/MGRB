@@ -1,0 +1,14 @@
+schema_version: "1.0"
+palette_id: owner-review-warm
+presentation:
+  bathymetry:
+    trench: "#3e3f5b"
+    abyssal: "#555970"
+    deep: "#707388"
+    slope: "#9191a0"
+    upper_slope: "#b4adb3"
+    shelf: "#d7cbc5"
+  land: {fill: "#eee3cf", outline: "#665f55"}
+  coastline: "#554f49"
+  contours: {minor: "#716b78", major: "#4d4a5b"}
+  layout: {background: "#fffaf2", frame: "#625b52", title: "#302d2a", footer: "#625b52"}

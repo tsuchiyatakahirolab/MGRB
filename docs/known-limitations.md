@@ -6,4 +6,7 @@ MGRB v1.0 automates the public geospatial base, but several limits are intrinsic
 - GEBCO is a global bathymetric compilation. Regional projects may require higher-resolution official or specialist bathymetry where available and appropriately licensed.
 - Pacific-wide 0..360 derivatives are display/processing derivatives. Canonical geographic sources remain in their provider coordinate convention, and line geometries should use QGIS's geodesic antimeridian split before longitude shifting.
 - Provider-gated or provider-controlled data are not mirrored merely for convenience. Users acquire those data under the provider's terms and ingest them locally.
-- QGIS project generation is automated, but final publication figures still require scholarly judgement about extent, projection, feature selection and the status of the boundaries being shown.
+- QGIS project generation, layout construction, and publication export are automated.
+  Owner review still applies scholarly judgement to label placement, visual hierarchy,
+  journal reduction, and whether any sourced maritime-reference layer is appropriate
+  for a particular publication.

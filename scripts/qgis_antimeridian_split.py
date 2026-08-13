@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Split line geometries geodesically at the antimeridian using QGIS Processing."""
+
 from __future__ import annotations
+
 import argparse
 import os
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from qgis.core import QgsApplication, QgsCoordinateReferenceSystem  # type: ignore
-from processing.core.Processing import Processing  # type: ignore
 import processing  # type: ignore
+from processing.core.Processing import Processing  # type: ignore
+from qgis.core import QgsApplication  # type: ignore
 
 
 def main() -> None:

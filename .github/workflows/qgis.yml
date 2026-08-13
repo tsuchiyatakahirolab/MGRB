@@ -18,19 +18,33 @@ jobs:
           - qgis/qgis:4.2.0
     steps:
       - uses: actions/checkout@v4
+      - name: Build pinned QGIS runtime
+        run: >-
+          docker build
+          --build-arg QGIS_IMAGE=${{ matrix.image }}
+          -t mgrb-qgis-test:current
+          -f docker/Dockerfile.qgis .
       - name: Headless PyQGIS smoke test
         run: >-
           docker run --rm
           -e QT_QPA_PLATFORM=offscreen
           -v "$PWD:/workspace"
           -w /workspace
-          ${{ matrix.image }}
+          mgrb-qgis-test:current
           python3 scripts/qgis_smoke.py
-      - name: Build synthetic QGIS project and publication layout
+      - name: Build synthetic QGIS project and all publication formats
         run: >-
           docker run --rm
           -e QT_QPA_PLATFORM=offscreen
           -v "$PWD:/workspace"
           -w /workspace
-          ${{ matrix.image }}
-          bash -lc 'python3 scripts/make_qgis_fixture.py && python3 scripts/build_qgis_projects.py --derived outputs/qgis-fixture/derived --output outputs/qgis-fixture/qgis && test -s outputs/qgis-fixture/qgis/test_region.qgz && test -s outputs/qgis-fixture/qgis/previews/test_region.pdf'
+          mgrb-qgis-test:current
+          bash -lc 'python3 scripts/make_qgis_fixture.py && python3 scripts/build_qgis_projects.py --derived outputs/qgis-fixture/derived --output outputs/qgis-fixture/qgis --review-output outputs/qgis-fixture/review && test -s outputs/qgis-fixture/qgis/test_region.qgz && test -s outputs/qgis-fixture/review/test_region.pdf && test -s outputs/qgis-fixture/review/test_region.png && test -s outputs/qgis-fixture/review/test_region.svg'
+      - name: Canonical public-data owner-review build
+        run: >-
+          docker run --rm
+          -e QT_QPA_PLATFORM=offscreen
+          -v "$PWD:/workspace"
+          -w /workspace
+          mgrb-qgis-test:current
+          bash -lc 'python3 scripts/prepare_owner_review.py && python3 scripts/build_qgis_projects.py && test "$(find qgis-projects/generated -maxdepth 1 -name "*.qgz" | wc -l)" -eq 6 && test "$(find build/owner-review -maxdepth 1 -name "*.png" | wc -l)" -ge 7 && test -s build/owner-review/qgis-validation.json'

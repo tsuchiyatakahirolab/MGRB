@@ -79,6 +79,14 @@ Automated PASS is not sufficient for the final v1.0 release.
 - [ ] APPROVE FOR v1.0
 - [ ] RETURN FOR CARTOGRAPHIC REVISION
 
+## Product UX and provenance
+
+- [ ] The documented one-command build requires only region/profile/theme for routine use.
+- [ ] The review package contains machine-readable build/source/style manifests and hashes.
+- [ ] A representative PDF/PNG/SVG/QGZ verifies with `mgrb verify`.
+- [ ] The no-visible-footer variant remains self-describing through embedded metadata and sidecars.
+- [ ] Citation/provenance is informative without visually dominating the map.
+
 
 ## Public context source choice
 

@@ -1,0 +1,11 @@
+product:
+  formal_name: "Maritime Geospatial Research Base (MGRB)"
+  canonical_repository: null
+  release_persistent_identifier: null
+  release_manifest_url: null
+  release_manifest_sha256: null
+  release_signature_url: null
+  recommended_citation: >-
+    Maritime Geospatial Research Base (MGRB), version {mgrb_version},
+    build {build_id}, Git commit {git_commit}. Cite the public geospatial
+    datasets listed in mgrb-source-manifest.json in addition to MGRB.

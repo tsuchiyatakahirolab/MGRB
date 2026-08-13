@@ -104,3 +104,11 @@ containing the six required representative renders plus a short machine-generate
 ## 10. Public source registry
 
 The implementation must expose public coastline/land/context providers through a registry or equivalent configuration mechanism. Natural Earth must be one provider option rather than a universal hard-coded dependency. Region/profile configuration should be able to select the most appropriate approved source and record that choice in provenance.
+
+## 11. Low-input workflow and verification
+
+Provide a one-command region/profile/theme build that performs acquisition, source
+selection, derivation, QGIS project/layout/export, citation, manifests, and hashes.
+Each generated artifact must be self-describing through embedded metadata where
+supported plus verifiable sidecars. Provide `mgrb verify GENERATED_FILE` with an
+extensible canonical-release/signature anchoring model.

@@ -5,7 +5,9 @@ Large or provider-gated sources are intentionally not fetched here:
 - GEBCO: use the provider's global/tile/subset/OPeNDAP service.
 - Marine Regions: obtain directly under provider terms, then ingest locally.
 """
+
 from __future__ import annotations
+
 import argparse
 import hashlib
 import json
@@ -57,14 +59,16 @@ def main() -> None:
         if not dst.exists() or args.force:
             print(f"fetch {source_id}: {item['url']}")
             download(item["url"], dst)
-        records.append({
-            "source_id": source_id,
-            "original_url": item["url"],
-            "local_file": str(dst),
-            "bytes": dst.stat().st_size,
-            "sha256": sha256(dst),
-            "retrieved_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        })
+        records.append(
+            {
+                "source_id": source_id,
+                "original_url": item["url"],
+                "local_file": str(dst),
+                "bytes": dst.stat().st_size,
+                "sha256": sha256(dst),
+                "retrieved_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            }
+        )
 
     manifest = args.output / "acquisition-manifest.json"
     manifest.write_text(json.dumps({"sources": records}, indent=2) + "\n", encoding="utf-8")

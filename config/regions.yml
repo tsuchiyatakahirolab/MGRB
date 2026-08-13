@@ -4,18 +4,42 @@ regions:
     purpose: "Taiwan east and south, including the Luzon Strait"
     display_crs: "+proj=laea +lat_0=22 +lon_0=122 +datum=WGS84 +units=m +no_defs +type=crs"
     layout_scale: "local"
+    profile: "local"
+    gebco_stride: 4
+    context_sources:
+      land: [gshhg_2_3_7, natural_earth_5_1_2]
+      coastline: [gshhg_2_3_7, natural_earth_5_1_2]
+      labels: [natural_earth_5_1_2]
   east_asia_seas:
     bbox_180: [115.0, 15.0, 145.0, 45.0]
     purpose: "East China Sea, Taiwan, Philippine Sea and adjacent waters"
     display_crs: "+proj=laea +lat_0=30 +lon_0=130 +datum=WGS84 +units=m +no_defs +type=crs"
     layout_scale: "regional"
+    profile: "regional"
+    gebco_stride: 12
+    context_sources:
+      land: [gshhg_2_3_7, natural_earth_5_1_2]
+      coastline: [gshhg_2_3_7, natural_earth_5_1_2]
+      labels: [natural_earth_5_1_2]
   west_pacific:
     bbox_180: [100.0, -10.0, 179.999, 55.0]
     purpose: "Western Pacific regional overview west of the antimeridian"
     display_crs: "+proj=robin +lon_0=150 +datum=WGS84 +units=m +no_defs +type=crs"
     layout_scale: "theatre"
+    profile: "theatre"
+    gebco_stride: 30
+    context_sources:
+      land: [natural_earth_5_1_2, gshhg_2_3_7]
+      coastline: [natural_earth_5_1_2, gshhg_2_3_7]
+      labels: [natural_earth_5_1_2]
   pacific_360:
     bbox_360: [100.0, -60.0, 300.0, 70.0]
     purpose: "Pacific-wide continuous-longitude derivative for antimeridian-spanning workflows"
     display_crs: "+proj=robin +lon_0=180 +datum=WGS84 +units=m +no_defs +type=crs"
     layout_scale: "theatre"
+    profile: "theatre"
+    gebco_stride: 60
+    context_sources:
+      land: [natural_earth_5_1_2, gshhg_2_3_7]
+      coastline: [natural_earth_5_1_2, gshhg_2_3_7]
+      labels: [natural_earth_5_1_2]

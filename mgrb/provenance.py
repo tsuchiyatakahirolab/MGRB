@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 import hashlib
 import json
 import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+
 from . import __version__
 
 
@@ -23,7 +25,7 @@ def git_commit(root: Path) -> str | None:
             stderr=subprocess.DEVNULL,
             text=True,
         ).strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return None
 
 
@@ -33,11 +35,13 @@ def build_manifest(root: Path, repository_root: Path | None = None) -> dict:
     files = []
     if root.exists():
         for p in sorted(x for x in root.rglob("*") if x.is_file()):
-            files.append({
-                "path": p.relative_to(root).as_posix(),
-                "bytes": p.stat().st_size,
-                "sha256": sha256(p),
-            })
+            files.append(
+                {
+                    "path": p.relative_to(root).as_posix(),
+                    "bytes": p.stat().st_size,
+                    "sha256": sha256(p),
+                }
+            )
     return {
         "schema": "mgrb-provenance-1.0",
         "mgrb_version": __version__,

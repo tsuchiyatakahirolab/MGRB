@@ -1,0 +1,16 @@
+schema_version: "1.0"
+depth_classes:
+  - {id: trench, min_m: null, max_m: -6000, label: "Below 6,000 m"}
+  - {id: abyssal, min_m: -6000, max_m: -4000, label: "4,000–6,000 m"}
+  - {id: deep, min_m: -4000, max_m: -2000, label: "2,000–4,000 m"}
+  - {id: slope, min_m: -2000, max_m: -1000, label: "1,000–2,000 m"}
+  - {id: upper_slope, min_m: -1000, max_m: -200, label: "200–1,000 m"}
+  - {id: shelf, min_m: -200, max_m: 0, label: "0–200 m"}
+contour_levels_m: [-200, -1000, -2000, -4000, -6000]
+maritime_status:
+  treaty_delimited: {dash: solid, width_mm: 0.40, label: "Treaty-delimited reference"}
+  officially_declared: {dash: solid, width_mm: 0.30, label: "Officially declared reference"}
+  provider_reference: {dash: dash, width_mm: 0.28, label: "Provider reference (not legal authority)"}
+  computed_reference: {dash: dot, width_mm: 0.25, label: "Computed reference"}
+  disputed: {dash: dash_dot, width_mm: 0.42, label: "Disputed / unresolved"}
+  uncertain: {dash: dot, width_mm: 0.38, label: "Uncertain status"}

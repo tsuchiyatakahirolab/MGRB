@@ -1,6 +1,8 @@
 from pathlib import Path
+
 import geopandas as gpd
 from shapely.geometry import LineString, Polygon
+
 from mgrb.builder import build_region
 from mgrb.config import Region
 
@@ -21,7 +23,11 @@ def test_build_public_region(tmp_path: Path):
         crs="EPSG:4326",
     ).to_file(coast, layer="coast", driver="GPKG")
     gpd.GeoDataFrame(
-        {"source_id": ["test"], "boundary_type": ["eez_reference"], "legal_status": ["provider_reference"]},
+        {
+            "source_id": ["test"],
+            "boundary_type": ["eez_reference"],
+            "legal_status": ["provider_reference"],
+        },
         geometry=[LineString([(121, 19), (121, 25)])],
         crs="EPSG:4326",
     ).to_file(bounds, layer="boundary", driver="GPKG")

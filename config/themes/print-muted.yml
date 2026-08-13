@@ -1,0 +1,25 @@
+schema_version: "1.0"
+palette_id: print-muted
+presentation:
+  bathymetry:
+    trench: "#354858"
+    abyssal: "#536674"
+    deep: "#71828c"
+    slope: "#929fa5"
+    upper_slope: "#b4bdbd"
+    shelf: "#d5d9d4"
+  land: {fill: "#eee9df", outline: "#575751"}
+  coastline: "#454842"
+  contours: {minor: "#68777c", major: "#45575e"}
+  hillshade: {opacity: 0.08, blend: multiply}
+  maritime_status:
+    treaty_delimited: "#384f59"
+    officially_declared: "#4f6168"
+    provider_reference: "#68777b"
+    computed_reference: "#777d7c"
+    disputed: "#6c5551"
+    uncertain: "#756b63"
+  uncertainty: {fill: "#8b7770", opacity: 0.13, hatch: diagonal}
+  labels: {text: "#292a27", halo: "#fbfaf6"}
+  graticule: "#9a9a90"
+  layout: {background: "#fffdfa", frame: "#555750", title: "#252622", footer: "#5d5e57"}

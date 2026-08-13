@@ -1,4 +1,5 @@
-FROM qgis/qgis:3.44.12
+ARG QGIS_IMAGE=qgis/qgis:3.44.12
+FROM ${QGIS_IMAGE}
 
 ENV QT_QPA_PLATFORM=offscreen \
     DEBIAN_FRONTEND=noninteractive

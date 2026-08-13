@@ -1,11 +1,14 @@
 from __future__ import annotations
-from pathlib import Path
+
 import tempfile
+from pathlib import Path
+
 import rasterio
 from rasterio.enums import Resampling
 from rasterio.merge import merge
 from rasterio.transform import Affine
 from rasterio.windows import from_bounds
+
 from .longitude import bbox_360_to_180_parts
 
 
@@ -80,8 +83,12 @@ def clip_raster_360(
             data, transform = _read_window(ds, parts[0], out_width)
             if bbox_360[0] >= 180:
                 transform = Affine(
-                    transform.a, transform.b, transform.c + 360.0,
-                    transform.d, transform.e, transform.f,
+                    transform.a,
+                    transform.b,
+                    transform.c + 360.0,
+                    transform.d,
+                    transform.e,
+                    transform.f,
                 )
             profile = _output_profile(ds.profile, data, transform)
             dst.parent.mkdir(parents=True, exist_ok=True)
@@ -101,8 +108,12 @@ def clip_raster_360(
             data, transform = _read_window(ds, part, widths[i] if widths else None)
             if part[0] < 0:
                 transform = Affine(
-                    transform.a, transform.b, transform.c + 360.0,
-                    transform.d, transform.e, transform.f,
+                    transform.a,
+                    transform.b,
+                    transform.c + 360.0,
+                    transform.d,
+                    transform.e,
+                    transform.f,
                 )
             profile = _output_profile(ds.profile, data, transform)
             p = Path(td) / f"part-{i}.tif"

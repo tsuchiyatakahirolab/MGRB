@@ -1,0 +1,35 @@
+schema_version: "1.0"
+profiles:
+  local:
+    purpose: "100–500 km event/research windows"
+    coastline_detail: "full"
+    contour_levels_m: [-200, -1000, -2000, -4000, -6000]
+    contour_width_mm: 0.22
+    label_rank_max: 4
+    label_size_pt: 8.0
+    graticule_interval_degrees: 1
+    graticule_annotation: true
+    scale_bar: true
+    layout: article_local
+  regional:
+    purpose: "Taiwan, East Asian seas, and adjacent regional context"
+    coastline_detail: "high"
+    contour_levels_m: [-200, -1000, -2000, -4000, -6000]
+    contour_width_mm: 0.18
+    label_rank_max: 2
+    label_size_pt: 7.5
+    graticule_interval_degrees: 5
+    graticule_annotation: true
+    scale_bar: true
+    layout: article_regional
+  theatre:
+    purpose: "Western Pacific and Pacific-wide context"
+    coastline_detail: "generalized"
+    contour_levels_m: [-1000, -4000, -6000]
+    contour_width_mm: 0.15
+    label_rank_max: 1
+    label_size_pt: 7.0
+    graticule_interval_degrees: 15
+    graticule_annotation: true
+    scale_bar: false
+    layout: article_pacific

@@ -38,13 +38,12 @@ List the configured regions:
 mgrb regions
 ```
 
-Build a region after placing public source files in `data/raw/`:
+Build a region after placing public source files in `data/raw/`. The profile is
+canonical for the region, while a built-in theme ID or external YAML file can be
+selected without editing Python or QML:
 
 ```bash
-mgrb build-region taiwan_east_south \
-  --land data/raw/ne_10m_land.geojson \
-  --coastline data/raw/ne_10m_coastline.geojson \
-  --bathymetry data/raw/GEBCO_2026.tif
+mgrb build taiwan_east_south --profile local --theme canonical
 ```
 
 Then generate the QGIS project from a QGIS-enabled environment:
@@ -53,7 +52,45 @@ Then generate the QGIS project from a QGIS-enabled environment:
 QT_QPA_PLATFORM=offscreen python scripts/build_qgis_projects.py
 ```
 
-The project generator writes `.qgz` files and publication-layout PDF previews to `qgis-projects/generated/`.
+The project generator writes real `.qgz` files to `qgis-projects/generated/` and
+PDF, PNG, SVG, journal-width previews, manifests, and a contact sheet to
+`build/owner-review/`.
+
+## Canonical cartography gate build
+
+The owner-review build acquires pinned Natural Earth and GSHHG archives and numeric
+GEBCO 2026 subsets from the official CEDA/THREDDS service. Raw and derived data remain
+untracked. Run it in a QGIS-enabled environment:
+
+```bash
+python scripts/prepare_owner_review.py
+QT_QPA_PLATFORM=offscreen python scripts/build_qgis_projects.py
+```
+
+This produces the six required review variants: local canonical, local external
+custom theme, regional, Western Pacific, Pacific-wide 0–360, and grayscale. See
+`docs/cartography-system.md` for profile, theme, source-selection, antimeridian,
+provenance, and citation details.
+
+The one-command product workflow asks for research choices only. It acquires pinned
+public inputs, selects GSHHG or Natural Earth by region/scale, requests an official
+GEBCO subset, applies projection and antimeridian defaults, generates derived
+GeoPackages/contours, invokes headless QGIS, and packages QGZ/PDF/PNG/SVG plus
+citation/provenance artifacts. Advanced source-file arguments remain available for
+specialist controlled-input builds.
+
+Every generated file has a `.mgrb.json` lineage sidecar. Verify origin and detect
+post-build modification with:
+
+```bash
+mgrb verify build/outputs/BUILD_ID/BUILD_ID.pdf
+```
+
+Use `--no-visible-footer` when a journal requires an unmarked figure. QGZ/project
+metadata, GeoPackage metadata, PNG/SVG metadata, PDF project metadata, sidecar
+manifests, and hashes remain present. Configure the canonical repository, release DOI,
+and future signed release-manifest anchors in `config/product.yml` before publication;
+v1.0 does not claim an unpublished signature or DOI.
 
 ## QGIS without manual GUI work
 

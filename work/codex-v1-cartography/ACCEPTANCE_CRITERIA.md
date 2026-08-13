@@ -123,3 +123,16 @@ All mandatory items must pass before Codex may stop at `READY_FOR_OWNER_VISUAL_R
 - [ ] Provenance/metadata tests pass.
 - [ ] Public-tree security/scope test passes.
 - [ ] CI is configured to fail on a broken canonical build.
+
+## N. Researcher UX and self-describing provenance
+
+- [ ] `mgrb build REGION --profile PROFILE --theme THEME` acquires approved public inputs, selects sources, builds derivatives, invokes QGIS, and exports QGZ/PDF/PNG/SVG plus GeoPackages in one command.
+- [ ] Routine builds require no GIS-engineering inputs beyond region/profile/theme.
+- [ ] The same high-level workflow is callable independently of the CLI for future QGIS Processing/GUI integration.
+- [ ] Every build emits `mgrb-build.json`, `mgrb-source-manifest.json`, `mgrb-style-manifest.json`, and `SHA256SUMS` or equivalent artifacts.
+- [ ] QGZ, GeoPackage, PDF, PNG, and SVG use embedded standard metadata where supported and retain sidecar lineage elsewhere.
+- [ ] Lineage records formal MGRB name/version, configurable canonical repository and persistent identifier, commit, build ID, region/profile/layout, theme origin/hash, source manifest ID/hash, public datasets, CRS, timestamp, and recommended citation.
+- [ ] `mgrb verify GENERATED_FILE` verifies MGRB origin, artifact/manifests hashes, build/source/style consistency, version/commit, and reports canonical-release anchoring status.
+- [ ] Verification architecture contains fields for a future signed release manifest/signature without claiming a signature exists.
+- [ ] Disabling the visible footer leaves embedded provenance and sidecars intact.
+- [ ] Theme/presentation changes preserve MGRB lineage without hidden watermarks, trap data, or fabricated geography.
