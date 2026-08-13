@@ -487,7 +487,7 @@ def _build_layout(
     for layer in legend_layers:
         if layer is not None:
             legend.model().rootGroup().addLayer(layer)
-    legend.setLegendFilterByMapEnabled(True)
+    legend.setLegendFilterByMapEnabled(False)
     legend.setResizeToContents(False)
     legend.rstyle(QgsLegendStyle.Title).setTextFormat(
         QgsTextFormat.fromQFont(_font("Arial", 7, bold=True))
