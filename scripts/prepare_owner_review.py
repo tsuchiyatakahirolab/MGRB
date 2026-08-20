@@ -14,10 +14,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import rasterio
+from rasterio.fill import fillnodata
 from rasterio.merge import merge
 from rasterio.transform import Affine
 
 from mgrb.builder import build_region
+from mgrb.cartography import buffered_bbox, buffered_vector_bbox
 from mgrb.config import load_profiles, load_regions, load_yaml
 from mgrb.longitude import bbox_360_to_180_parts
 from mgrb.sources import SourceRegistry
@@ -49,7 +51,7 @@ NATURAL_EARTH_FILES = (
 REVIEW_BUILDS = (
     ("taiwan-local-canonical", "taiwan_east_south", "canonical"),
     ("taiwan-local-custom", "taiwan_east_south", "examples/custom-theme.yml"),
-    ("east-asia-regional", "east_asia_seas", "canonical"),
+    ("east-asia-regional", "east_asia_seas", "overlay-quiet"),
     ("west-pacific", "west_pacific", "print-muted"),
     ("pacific-360", "pacific_360", "canonical"),
     ("taiwan-local-grayscale", "taiwan_east_south", "grayscale"),
@@ -138,17 +140,40 @@ def _netcdf_to_tiff(source: Path, target: Path, shift: float = 0.0) -> None:
 
 def acquire_gebco(region_name: str, bbox: tuple[float, ...], convention: str, stride: int) -> Path:
     output = RAW / "gebco" / f"{region_name}.tif"
-    if output.exists() and output.stat().st_size:
+    wraps_east = convention == "180" and bbox[2] >= 179.999
+    request_payload = {
+        "bbox": list(bbox),
+        "longitude_convention": convention,
+        "stride": stride,
+        "service": GEBCO_NCSS,
+    }
+    if wraps_east:
+        request_payload["edge_strategy"] = "antimeridian-continuation-mosaic-v3-seam-fill"
+    request_bytes = (json.dumps(request_payload, sort_keys=True) + "\n").encode("utf-8")
+    request_hash = hashlib.sha256(request_bytes).hexdigest()[:16]
+    request_path = output.with_suffix(".request.json")
+    if (
+        output.exists()
+        and output.stat().st_size
+        and request_path.exists()
+        and request_path.read_bytes() == request_bytes
+    ):
         return output
-    work = RAW / "gebco" / "subsets" / region_name
+    work = RAW / "gebco" / "subsets" / region_name / request_hash
     work.mkdir(parents=True, exist_ok=True)
     parts = bbox_360_to_180_parts(bbox) if convention == "360" else [bbox]
+    if wraps_east:
+        parts.append((-180.0, bbox[1], -170.0, bbox[3]))
     tiffs = []
     for index, part in enumerate(parts):
         netcdf = work / f"part-{index}.nc"
         download(_ncss_url(part, stride), netcdf)
         tiff = work / f"part-{index}.tif"
-        _netcdf_to_tiff(netcdf, tiff, shift=360.0 if convention == "360" and part[0] < 0 else 0.0)
+        _netcdf_to_tiff(
+            netcdf,
+            tiff,
+            shift=360.0 if part[0] < 0 and (convention == "360" or wraps_east) else 0.0,
+        )
         tiffs.append(tiff)
     if len(tiffs) == 1:
         shutil.copy2(tiffs[0], output)
@@ -156,6 +181,16 @@ def acquire_gebco(region_name: str, bbox: tuple[float, ...], convention: str, st
         opened = [rasterio.open(path) for path in tiffs]
         try:
             data, transform = merge(opened)
+            nodata = opened[0].nodata
+            if nodata is not None:
+                for band_index in range(data.shape[0]):
+                    valid = data[band_index] != nodata
+                    if not valid.all():
+                        data[band_index] = fillnodata(
+                            data[band_index],
+                            mask=valid.astype("uint8"),
+                            max_search_distance=3,
+                        )
             profile = opened[0].profile.copy()
             profile.update(
                 height=data.shape[1],
@@ -177,6 +212,7 @@ def acquire_gebco(region_name: str, bbox: tuple[float, ...], convention: str, st
         finally:
             for dataset in opened:
                 dataset.close()
+    request_path.write_bytes(request_bytes)
     return output
 
 
@@ -199,7 +235,12 @@ def source_manifest(registry: SourceRegistry, region_name: str, land_source: str
     return [
         registry.get("gebco_2026").manifest_record(
             ["bathymetry", "depth_contours"],
-            [f"NCSS subset for {region_name}", "profile-specific grid stride"],
+            [
+                f"NCSS subset for {region_name}",
+                "profile-specific grid stride and coverage buffer",
+                "antimeridian continuation mosaic where required",
+                "nearest-neighbour seam fill limited to three source-grid cells",
+            ],
         ),
         registry.get(land_source).manifest_record(
             ["land", "coastline"],
@@ -290,7 +331,13 @@ def main() -> None:
 
     for region_name in {item[1] for item in builds}:
         region = regions[region_name]
-        acquire_gebco(region.name, region.bbox, region.longitude_convention, region.gebco_stride)
+        coverage_bbox = buffered_bbox(region.bbox, region.longitude_convention, region.profile)
+        acquire_gebco(
+            region.name,
+            coverage_bbox,
+            region.longitude_convention,
+            region.gebco_stride,
+        )
 
     for build_id, region_name, theme_name in builds:
         region = regions[region_name]
@@ -305,6 +352,14 @@ def main() -> None:
             land = paths["ne_110m_land"]
             land_source = "natural_earth_5_1_2"
         theme = resolve_theme(theme_name, ROOT / "config/themes")
+        coverage_bbox = buffered_bbox(region.bbox, region.longitude_convention, region.profile)
+        vector_bbox = buffered_vector_bbox(
+            region.bbox, region.longitude_convention, region.profile
+        )
+        vector_convention = region.longitude_convention
+        if region.longitude_convention == "360" and region.bbox[2] - region.bbox[0] >= 180:
+            vector_bbox = (-180.0, -89.0, 180.0, 89.0)
+            vector_convention = "180"
         build_region(
             region,
             DERIVED,
@@ -322,6 +377,9 @@ def main() -> None:
             build_timestamp_utc=timestamp,
             product=product,
             visible_footer=not args.no_visible_footer,
+            source_coverage_bbox=coverage_bbox,
+            vector_coverage_bbox=vector_bbox,
+            vector_longitude_convention=vector_convention,
         )
 
     manifest = {

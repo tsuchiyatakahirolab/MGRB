@@ -1,0 +1,16 @@
+schema_version: "1.0"
+palette_id: overlay-quiet
+presentation:
+  bathymetry:
+    opacity: 0.72
+    trench: "#526b7a"
+    abyssal: "#6d8390"
+    deep: "#8799a1"
+    slope: "#a2afb2"
+    upper_slope: "#bec6c5"
+    shelf: "#d8dddd"
+  contours:
+    minor: "#849298"
+    major: "#687a82"
+    opacity: 0.58
+  hillshade: {opacity: 0.04, blend: multiply}

@@ -1,6 +1,6 @@
 # MGRB v1.0 Automated Acceptance Criteria
 
-All mandatory items must pass before Codex may stop at `READY_FOR_OWNER_VISUAL_REVIEW`.
+All mandatory items must pass before Codex may stop at `READY_FOR_OWNER_VISUAL_REVIEW_R2`.
 
 ## A. Repository and reproducibility
 
@@ -136,3 +136,19 @@ All mandatory items must pass before Codex may stop at `READY_FOR_OWNER_VISUAL_R
 - [ ] Verification architecture contains fields for a future signed release manifest/signature without claiming a signature exists.
 - [ ] Disabling the visible footer leaves embedded provenance and sidecars intact.
 - [ ] Theme/presentation changes preserve MGRB lineage without hidden watermarks, trap data, or fabricated geography.
+
+## O. Owner-return R2 cartographic corrections
+
+- [ ] A bundled/system-safe font is explicitly registered in headless QGIS.
+- [ ] Required glyph coverage and distinct glyph rendering pass before export.
+- [ ] The actual exported PNG title, map labels, legend, scale annotations, and footer pass a missing-glyph/tofu detection gate.
+- [ ] Profile-buffered GEBCO acquisition covers every projectable final-frame edge.
+- [ ] Actual raster coverage, not only a declared bbox, is validated.
+- [ ] Processing/warp/tile footprints are absent; post-warp nodata is zero for projectable regional frames and justified projection edges are recorded separately.
+- [ ] Legends, headers, and visible provenance are materially more compact.
+- [ ] Full embedded/sidecar provenance remains unchanged by the concise visible footer.
+- [ ] An overlay-quiet Local/Regional theme preserves semantic categories and lineage.
+- [ ] Theatre/Pacific relief, contours, and labels are further generalized.
+- [ ] Page orientation adapts to latitude-adjusted region aspect (portrait/square/landscape).
+- [ ] QA blocks excessive margins, compressed frames, or inappropriate fixed orientation.
+- [ ] All six R2 maps, journal-width previews, contact sheet, manifests, and hashes are regenerated.

@@ -98,7 +98,12 @@ def validate_theme(data: dict[str, Any]) -> None:
         color = _get_path(presentation, dotted)
         if not isinstance(color, str) or not HEX_COLOR.fullmatch(color):
             raise ValueError(f"Invalid color at presentation.{dotted}: {color!r}")
-    for dotted in ("hillshade.opacity", "uncertainty.opacity"):
+    for dotted in (
+        "bathymetry.opacity",
+        "contours.opacity",
+        "hillshade.opacity",
+        "uncertainty.opacity",
+    ):
         opacity = float(_get_path(presentation, dotted))
         if not 0.0 <= opacity <= 1.0:
             raise ValueError(f"Opacity must be between 0 and 1 at presentation.{dotted}")

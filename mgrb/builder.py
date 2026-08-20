@@ -10,6 +10,7 @@ from pathlib import Path
 import geopandas as gpd
 
 from . import __version__
+from .cartography import resolve_layout_geometry
 from .config import Region
 from .provenance import git_commit, sha256
 from .raster import clip_raster, clip_raster_360
@@ -37,6 +38,9 @@ def build_region(
     build_timestamp_utc: str | None = None,
     product: dict | None = None,
     visible_footer: bool = True,
+    source_coverage_bbox: tuple[float, float, float, float] | None = None,
+    vector_coverage_bbox: tuple[float, float, float, float] | None = None,
+    vector_longitude_convention: str | None = None,
 ) -> dict:
     output_name = output_name or region.name
     region_dir = output_dir / output_name
@@ -45,16 +49,19 @@ def build_region(
     if gpkg.exists():
         gpkg.unlink()
 
+    coverage_bbox = source_coverage_bbox or region.bbox
+    vector_bbox = vector_coverage_bbox or coverage_bbox
+    vector_convention = vector_longitude_convention or region.longitude_convention
     counts = {}
     mode = "w"
     if land:
         counts["land"] = clip_vector(
-            land, gpkg, None, region.bbox, region.longitude_convention, "land", mode
+            land, gpkg, None, vector_bbox, vector_convention, "land", mode
         )
         mode = "a"
     if coastline:
         counts["coastline"] = clip_vector(
-            coastline, gpkg, None, region.bbox, region.longitude_convention, "coastline", mode
+            coastline, gpkg, None, vector_bbox, vector_convention, "coastline", mode
         )
         mode = "a"
     elif land and gpkg.exists():
@@ -73,7 +80,7 @@ def build_region(
         mode = "a"
     if labels:
         counts["labels"] = clip_vector(
-            labels, gpkg, None, region.bbox, region.longitude_convention, "labels", mode
+            labels, gpkg, None, vector_bbox, vector_convention, "labels", mode
         )
         mode = "a"
     if boundary_file:
@@ -81,8 +88,8 @@ def build_region(
             boundary_file,
             gpkg,
             None,
-            region.bbox,
-            region.longitude_convention,
+            vector_bbox,
+            vector_convention,
             "maritime_boundaries",
             mode,
         )
@@ -138,6 +145,11 @@ def build_region(
         mgrb_version=__version__, build_id=output_name, git_commit=commit or "unknown"
     )
 
+    resolved_layout = (
+        resolve_layout_geometry(region.bbox, layout)
+        if layout and ("orientation_pages_mm" in layout or "map_mm" in layout)
+        else dict(layout or {})
+    )
     build_manifest = {
         "schema": "mgrb-build-1.0",
         "mgrb_version": __version__,
@@ -155,8 +167,14 @@ def build_region(
         "region_profile": region.name,
         "cartographic_profile": region.profile,
         "layout_profile": profile.get("layout") if profile else region.layout_scale,
+        "layout_orientation": resolved_layout.get("orientation"),
+        "page_mm": resolved_layout.get("page_mm"),
+        "map_mm": resolved_layout.get("map_mm"),
         "crs": region.display_crs,
         "longitude_convention": region.longitude_convention,
+        "source_coverage_bbox": list(coverage_bbox),
+        "vector_coverage_bbox": list(vector_bbox),
+        "vector_longitude_convention": vector_convention,
         "visible_footer": visible_footer,
         "recommended_citation": recommended_citation,
         "source_manifest_id": source_payload["manifest_id"],
@@ -214,9 +232,14 @@ def build_region(
 
     spec = {
         "build": build_manifest,
-        "region": asdict(region),
+        "region": {
+            **asdict(region),
+            "source_coverage_bbox": list(coverage_bbox),
+            "vector_coverage_bbox": list(vector_bbox),
+            "vector_longitude_convention": vector_convention,
+        },
         "cartographic_profile": profile or {},
-        "layout": layout or {},
+        "layout": resolved_layout,
         "theme": style_manifest,
         "sources": source_manifest or [],
         "files": {

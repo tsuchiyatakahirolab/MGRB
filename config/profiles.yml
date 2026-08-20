@@ -5,9 +5,13 @@ profiles:
     coastline_detail: "full"
     contour_levels_m: [-200, -1000, -2000, -4000, -6000]
     contour_width_mm: 0.22
+    contour_opacity: 0.78
+    bathymetry_opacity: 0.92
     label_rank_max: 4
     label_size_pt: 8.0
     graticule_interval_degrees: 1
+    graticule_width_mm: 0.07
+    graticule_opacity: 0.55
     graticule_annotation: true
     scale_bar: true
     layout: article_local
@@ -16,9 +20,13 @@ profiles:
     coastline_detail: "high"
     contour_levels_m: [-200, -1000, -2000, -4000, -6000]
     contour_width_mm: 0.18
-    label_rank_max: 2
+    contour_opacity: 0.68
+    bathymetry_opacity: 0.88
+    label_rank_max: 1
     label_size_pt: 7.5
     graticule_interval_degrees: 5
+    graticule_width_mm: 0.06
+    graticule_opacity: 0.40
     graticule_annotation: true
     scale_bar: true
     layout: article_regional
@@ -26,10 +34,16 @@ profiles:
     purpose: "Western Pacific and Pacific-wide context"
     coastline_detail: "generalized"
     contour_levels_m: [-1000, -4000, -6000]
-    contour_width_mm: 0.15
-    label_rank_max: 1
-    label_size_pt: 7.0
-    graticule_interval_degrees: 15
-    graticule_annotation: true
+    contour_width_mm: 0.13
+    contour_opacity: 0.0
+    bathymetry_opacity: 0.80
+    label_rank_max: -1
+    label_size_pt: 6.5
+    graticule_interval_degrees: 30
+    graticule_enabled: false
+    graticule_width_mm: 0.05
+    graticule_opacity: 0.20
+    graticule_annotation: false
     scale_bar: false
+    legend_enabled: false
     layout: article_pacific

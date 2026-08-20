@@ -1,6 +1,6 @@
 # Owner Visual QA Checklist
 
-This checklist is for the human owner after Codex reaches `READY_FOR_OWNER_VISUAL_REVIEW`.
+This checklist is for the human owner after Codex reaches `READY_FOR_OWNER_VISUAL_REVIEW_R2`.
 
 Automated PASS is not sufficient for the final v1.0 release.
 
@@ -10,6 +10,17 @@ Automated PASS is not sufficient for the final v1.0 release.
 - [ ] The base is visually restrained enough for future analytical overlays.
 - [ ] No component looks decorative for its own sake.
 - [ ] Title, legend, scale, and source footer are secondary to the map.
+- [ ] Titles, labels, legend, scale annotations, and footer contain no square/tofu glyphs.
+- [ ] The legend is compact and does not conceal a material part of the research area.
+- [ ] The visible footer is a single unobtrusive attribution line.
+
+## Geometry and raster coverage
+
+- [ ] No rectangular, trapezoidal, tiled, clipped, or warped raster footprint is visible inside the map frame.
+- [ ] Any curved theatre/Pacific edge is justified by the selected projection, not a processing boundary.
+- [ ] Bathymetry is seamless to every projectable map-frame edge.
+- [ ] Blank page margins are proportionate and the map frame is not compressed.
+- [ ] Page orientation suits the research extent; Taiwan East/South uses the available portrait area well.
 
 ## Bathymetry
 
@@ -59,6 +70,7 @@ Automated PASS is not sufficient for the final v1.0 release.
 
 - [ ] Regional context is clear at first glance.
 - [ ] Detail is appropriately reduced relative to local.
+- [ ] The overlay-quiet regional variant leaves enough visual headroom for AIS/SAR/trajectory layers.
 
 ## Pacific-wide profile
 
@@ -66,6 +78,7 @@ Automated PASS is not sufficient for the final v1.0 release.
 - [ ] International Date Line handling is visually clean.
 - [ ] No feature is obviously duplicated, torn, or clipped incorrectly.
 - [ ] Broad physical geography is visible without local-scale noise.
+- [ ] Fine bathymetric texture and nonessential labels are suppressed.
 
 ## Journal-width tests
 

@@ -1,17 +1,35 @@
 schema_version: "1.0"
 layouts:
   article_local:
-    page_mm: [210, 148]
-    map_mm: [10, 18, 190, 112]
-    title_pt: 12
-    footer_pt: 6.5
+    orientation_pages_mm:
+      portrait: [148, 210]
+      square: [180, 180]
+      landscape: [210, 148]
+    side_margin_mm: 8
+    map_top_mm: 12
+    map_bottom_mm: 12
+    title_pt: 9
+    footer_pt: 5
+    legend_mm: [42, 40]
   article_regional:
-    page_mm: [240, 170]
-    map_mm: [10, 18, 220, 134]
-    title_pt: 12
-    footer_pt: 6.5
+    orientation_pages_mm:
+      portrait: [170, 240]
+      square: [200, 200]
+      landscape: [240, 170]
+    side_margin_mm: 8
+    map_top_mm: 12
+    map_bottom_mm: 12
+    title_pt: 9
+    footer_pt: 5
+    legend_mm: [42, 40]
   article_pacific:
-    page_mm: [280, 170]
-    map_mm: [10, 18, 260, 134]
-    title_pt: 12
-    footer_pt: 6.5
+    orientation_pages_mm:
+      portrait: [170, 280]
+      square: [210, 210]
+      landscape: [280, 170]
+    side_margin_mm: 8
+    map_top_mm: 12
+    map_bottom_mm: 12
+    title_pt: 9
+    footer_pt: 5
+    legend_mm: [42, 30]

@@ -30,6 +30,8 @@ def test_profile_density_decreases_with_scale():
     )
     assert profiles["local"].scale_bar is True
     assert profiles["theatre"].scale_bar is False
+    assert profiles["local"].contour_opacity > profiles["theatre"].contour_opacity
+    assert profiles["regional"].bathymetry_opacity > profiles["theatre"].bathymetry_opacity
 
 
 def test_status_semantics_have_non_color_encodings():

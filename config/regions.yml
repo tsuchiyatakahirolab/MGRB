@@ -27,7 +27,7 @@ regions:
     display_crs: "+proj=robin +lon_0=150 +datum=WGS84 +units=m +no_defs +type=crs"
     layout_scale: "theatre"
     profile: "theatre"
-    gebco_stride: 30
+    gebco_stride: 45
     context_sources:
       land: [natural_earth_5_1_2, gshhg_2_3_7]
       coastline: [natural_earth_5_1_2, gshhg_2_3_7]
@@ -38,7 +38,7 @@ regions:
     display_crs: "+proj=robin +lon_0=180 +datum=WGS84 +units=m +no_defs +type=crs"
     layout_scale: "theatre"
     profile: "theatre"
-    gebco_stride: 60
+    gebco_stride: 90
     context_sources:
       land: [natural_earth_5_1_2, gshhg_2_3_7]
       coastline: [natural_earth_5_1_2, gshhg_2_3_7]

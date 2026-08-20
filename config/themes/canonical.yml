@@ -2,6 +2,7 @@ schema_version: "1.0"
 palette_id: canonical
 presentation:
   bathymetry:
+    opacity: 1.0
     trench: "#29465b"
     abyssal: "#3f6075"
     deep: "#58788b"
@@ -10,7 +11,7 @@ presentation:
     shelf: "#c8d5d8"
   land: {fill: "#e9e5dc", outline: "#65655f"}
   coastline: "#50534f"
-  contours: {minor: "#536b77", major: "#364d59"}
+  contours: {minor: "#536b77", major: "#364d59", opacity: 1.0}
   hillshade: {opacity: 0.12, blend: multiply}
   maritime_status:
     treaty_delimited: "#3b525f"

@@ -10,12 +10,22 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_all_canonical_themes_resolve_and_hash_deterministically():
-    for name in ("canonical", "grayscale", "print-muted"):
+    for name in ("canonical", "grayscale", "print-muted", "overlay-quiet"):
         first = resolve_theme(name, ROOT / "config/themes")
         second = resolve_theme(name, ROOT / "config/themes")
         assert first.origin == "canonical"
         assert first.sha256 == second.sha256 == theme_hash(first.data)
         assert len(first.sha256) == 64
+
+
+def test_overlay_quiet_theme_preserves_categories_and_reduces_dominance():
+    canonical = resolve_theme("canonical", ROOT / "config/themes")
+    quiet = resolve_theme("overlay-quiet", ROOT / "config/themes")
+    assert set(quiet.data["presentation"]["bathymetry"]) == set(
+        canonical.data["presentation"]["bathymetry"]
+    )
+    assert quiet.data["presentation"]["bathymetry"]["opacity"] < 1.0
+    assert quiet.data["presentation"]["contours"]["opacity"] < 1.0
 
 
 def test_custom_partial_theme_inherits_without_mutating_canonical(tmp_path: Path):

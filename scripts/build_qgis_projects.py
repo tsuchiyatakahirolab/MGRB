@@ -7,7 +7,6 @@ import argparse
 import json
 import os
 import shutil
-import sqlite3
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
@@ -24,6 +23,7 @@ from qgis.core import (  # type: ignore
     QgsColorRampShader,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
+    QgsCsException,
     QgsExpressionContextUtils,
     QgsFillSymbol,
     QgsLayoutExporter,
@@ -58,6 +58,9 @@ from qgis.core import (  # type: ignore
 from qgis.PyQt.QtCore import Qt  # type: ignore
 from qgis.PyQt.QtGui import QColor, QFont, QImage, QPainter  # type: ignore
 
+from mgrb.cartography import layout_qa
+from mgrb.qgis_font import FONT_FAMILY, glyph_fingerprint, register_bundled_fonts
+from mgrb.render_qa import detect_tofu_blocks
 from mgrb.verification import verify_generated_file, write_artifact_sidecar, write_sha256sums
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -94,11 +97,22 @@ STATUS_WIDTH = {
     "disputed": 0.42,
     "uncertain": 0.38,
 }
+FONT_PREFLIGHT: dict = {}
 
 
 def _start_qgis() -> QgsApplication:
+    global FONT_PREFLIGHT
     application = QgsApplication([], False)
     application.initQgis()
+    FONT_PREFLIGHT = register_bundled_fonts(ROOT)
+    glyph_hashes = {
+        glyph: glyph_fingerprint(QFont(FONT_FAMILY, 18), glyph)
+        for glyph in ("M", "G", "R", "B", "1", "m", "?")
+    }
+    distinct = len(set(glyph_hashes.values()))
+    if distinct < 6:
+        raise RuntimeError(f"Bundled-font glyph fingerprints are not distinct: {glyph_hashes}")
+    FONT_PREFLIGHT["distinct_glyph_fingerprints"] = distinct
     return application
 
 
@@ -118,7 +132,7 @@ def _layout_text_format(font: QFont, color: str) -> QgsTextFormat:
 
 
 def _font(family: str, size: int, *, bold: bool = False) -> QFont:
-    font = QFont(family, size)
+    font = QFont(FONT_FAMILY, size)
     font.setBold(bold)
     return font
 
@@ -138,7 +152,7 @@ def _add_vector(
     return layer
 
 
-def _style_raster(layer: QgsRasterLayer, theme: dict) -> None:
+def _style_raster(layer: QgsRasterLayer, theme: dict, profile: dict) -> None:
     shader_function = QgsColorRampShader()
     shader_function.setColorRampType(QgsColorRampShader.Interpolated)
     shader_function.setColorRampItemList(
@@ -148,11 +162,23 @@ def _style_raster(layer: QgsRasterLayer, theme: dict) -> None:
             )
             for value, key, label in DEPTH_BREAKS
         ]
+        + [
+            QgsColorRampShader.ColorRampItem(
+                1.0, QColor(_color(theme, "land.fill")), "Land"
+            ),
+            QgsColorRampShader.ColorRampItem(
+                9000.0, QColor(_color(theme, "land.fill")), "Land"
+            ),
+        ]
     )
     shader = QgsRasterShader()
     shader.setRasterShaderFunction(shader_function)
     renderer = QgsSingleBandPseudoColorRenderer(layer.dataProvider(), 1, shader)
     layer.setRenderer(renderer)
+    layer.setOpacity(
+        float(profile.get("bathymetry_opacity", 1.0))
+        * float(_color(theme, "bathymetry.opacity"))
+    )
 
 
 def _style_land(layer: QgsVectorLayer, theme: dict) -> None:
@@ -188,6 +214,10 @@ def _style_contours(layer: QgsVectorLayer, theme: dict, profile: dict) -> None:
         )
         categories.append(QgsRendererCategory(float(level), symbol, f"{abs(int(level)):,} m"))
     layer.setRenderer(QgsCategorizedSymbolRenderer("depth_m", categories))
+    layer.setOpacity(
+        float(profile.get("contour_opacity", 1.0))
+        * float(_color(theme, "contours.opacity"))
+    )
 
 
 def _style_boundaries(layer: QgsVectorLayer, theme: dict) -> None:
@@ -206,7 +236,11 @@ def _style_boundaries(layer: QgsVectorLayer, theme: dict) -> None:
 
 def _style_labels(layer: QgsVectorLayer, theme: dict, profile: dict) -> None:
     names = {field.name() for field in layer.fields()}
-    if "NAME" in names:
+    if "NAMEASCII" in names:
+        name_field = "NAMEASCII"
+    elif "nameascii" in names:
+        name_field = "nameascii"
+    elif "NAME" in names:
         name_field = "NAME"
     elif "name" in names:
         name_field = "name"
@@ -225,7 +259,7 @@ def _style_labels(layer: QgsVectorLayer, theme: dict, profile: dict) -> None:
         settings.fieldName = name_field
     settings.placement = Qgis.LabelPlacement.OverPoint
     text_format = QgsTextFormat()
-    text_format.setFont(QFont("Arial", round(float(profile["label_size_pt"]))))
+    text_format.setFont(QFont(FONT_FAMILY, round(float(profile["label_size_pt"]))))
     text_format.setSize(float(profile["label_size_pt"]))
     text_format.setColor(QColor(_color(theme, "labels.text")))
     buffer = QgsTextBufferSettings()
@@ -320,14 +354,15 @@ def _normalize_360_raster(path: Path) -> None:
 def _normalized_360_gpkg(source_path: Path, target_path: Path) -> None:
     """Create a canonical-longitude display copy from seam-split 0..360 vectors."""
 
-    def shift_geometry(geometry) -> None:
+    def shift_geometry(geometry, shift_seam: bool) -> None:
         if geometry.GetGeometryCount():
             for index in range(geometry.GetGeometryCount()):
-                shift_geometry(geometry.GetGeometryRef(index))
+                shift_geometry(geometry.GetGeometryRef(index), shift_seam)
             return
         for index in range(geometry.GetPointCount()):
             x, y, _ = geometry.GetPoint(index)
-            geometry.SetPoint_2D(index, x - 360.0 if x > 180.0 else x, y)
+            should_shift = x > 180.0 or (shift_seam and x >= 180.0)
+            geometry.SetPoint_2D(index, x - 360.0 if should_shift else x, y)
 
     driver = ogr.GetDriverByName("GPKG")
     if target_path.exists():
@@ -353,26 +388,12 @@ def _normalized_360_gpkg(source_path: Path, target_path: Path) -> None:
             geometry = source_feature.GetGeometryRef()
             if geometry is not None:
                 geometry = geometry.Clone()
-                shift_geometry(geometry)
+                shift_seam = geometry.GetEnvelope()[0] >= 180.0 - 1e-9
+                shift_geometry(geometry, shift_seam)
                 target_feature.SetGeometry(geometry)
             target_layer.CreateFeature(target_feature)
     target = None
     source = None
-    with sqlite3.connect(target_path) as connection:
-        connection.execute("ATTACH DATABASE ? AS source", (str(source_path),))
-        for table in ("gpkg_metadata", "gpkg_metadata_reference"):
-            exists = connection.execute(
-                "SELECT 1 FROM source.sqlite_master WHERE type='table' AND name=?", (table,)
-            ).fetchone()
-            if exists:
-                schema = connection.execute(
-                    "SELECT sql FROM source.sqlite_master WHERE type='table' AND name=?", (table,)
-                ).fetchone()[0]
-                connection.execute(
-                    schema.replace(f"CREATE TABLE {table}", f"CREATE TABLE IF NOT EXISTS {table}")
-                )
-                connection.execute(f"INSERT INTO {table} SELECT * FROM source.{table}")
-        connection.commit()
 
 
 def _extent_from_bbox(
@@ -440,12 +461,13 @@ def _build_layout(
     title.setText(spec["region"]["purpose"])
     title.setTextFormat(
         _layout_text_format(
-            _font("Arial", int(layout_cfg["title_pt"]), bold=True),
+            _font(FONT_FAMILY, int(layout_cfg["title_pt"]), bold=True),
             _color(theme, "layout.title"),
         )
     )
-    title.attemptMove(QgsLayoutPoint(map_x, 5, QgsUnitTypes.LayoutMillimeters))
-    title.attemptResize(QgsLayoutSize(map_width, 10, QgsUnitTypes.LayoutMillimeters))
+    title.attemptMove(QgsLayoutPoint(map_x, 1.5, QgsUnitTypes.LayoutMillimeters))
+    title.attemptResize(QgsLayoutSize(map_width, 8, QgsUnitTypes.LayoutMillimeters))
+    title.setZValue(100)
     layout.addLayoutItem(title)
 
     map_item = QgsLayoutItemMap(layout)
@@ -463,21 +485,34 @@ def _build_layout(
     layout.setReferenceMap(map_item)
 
     grid = QgsLayoutItemMapGrid("MGRB graticule", map_item)
-    grid.setEnabled(True)
+    grid.setEnabled(bool(profile.get("graticule_enabled", True)))
+    grid.setCrs(QgsCoordinateReferenceSystem("EPSG:4326"))
     grid.setIntervalX(float(profile["graticule_interval_degrees"]))
     grid.setIntervalY(float(profile["graticule_interval_degrees"]))
-    grid.setLineSymbol(
-        QgsLineSymbol.createSimple(
-            {
-                "line_color": _color(theme, "graticule"),
-                "line_width": "0.10",
-                "line_style": "dot",
-            }
-        )
+    grid_symbol = QgsLineSymbol.createSimple(
+        {
+            "line_color": _color(theme, "graticule"),
+            "line_width": str(profile.get("graticule_width_mm", 0.10)),
+            "line_style": "dot",
+        }
     )
+    grid_symbol.setOpacity(float(profile.get("graticule_opacity", 1.0)))
+    grid.setLineSymbol(grid_symbol)
     grid.setAnnotationEnabled(bool(profile["graticule_annotation"]))
     grid.setAnnotationPrecision(0)
-    map_item.grids().addGrid(grid)
+    grid.setAnnotationDisplay(QgsLayoutItemMapGrid.LongitudeOnly, QgsLayoutItemMapGrid.Top)
+    grid.setAnnotationDisplay(QgsLayoutItemMapGrid.LatitudeOnly, QgsLayoutItemMapGrid.Left)
+    grid.setAnnotationDisplay(QgsLayoutItemMapGrid.HideAll, QgsLayoutItemMapGrid.Bottom)
+    grid.setAnnotationDisplay(QgsLayoutItemMapGrid.HideAll, QgsLayoutItemMapGrid.Right)
+    annotation_font = QFont(FONT_FAMILY, 6)
+    if hasattr(grid, "setAnnotationFont"):
+        grid.setAnnotationFont(annotation_font)
+    if hasattr(grid, "setAnnotationTextFormat"):
+        grid.setAnnotationTextFormat(
+            _layout_text_format(annotation_font, _color(theme, "layout.footer"))
+        )
+    if bool(profile.get("graticule_enabled", True)):
+        map_item.grids().addGrid(grid)
 
     legend = QgsLayoutItemLegend(layout)
     legend.setLinkedMap(map_item)
@@ -490,24 +525,35 @@ def _build_layout(
     legend.setLegendFilterByMapEnabled(False)
     legend.setResizeToContents(False)
     legend.rstyle(QgsLegendStyle.Title).setTextFormat(
-        QgsTextFormat.fromQFont(_font("Arial", 7, bold=True))
+        QgsTextFormat.fromQFont(_font(FONT_FAMILY, 6, bold=True))
     )
     legend.rstyle(QgsLegendStyle.Subgroup).setTextFormat(
-        QgsTextFormat.fromQFont(_font("Arial", 6, bold=True))
+        QgsTextFormat.fromQFont(_font(FONT_FAMILY, 5, bold=True))
     )
     legend.rstyle(QgsLegendStyle.SymbolLabel).setTextFormat(
-        QgsTextFormat.fromQFont(QFont("Arial", 6))
+        QgsTextFormat.fromQFont(QFont(FONT_FAMILY, 5))
     )
     legend.setBackgroundEnabled(True)
     legend.setBackgroundColor(QColor(_color(theme, "layout.background")))
     legend.setFrameEnabled(True)
     legend.setFrameStrokeColor(QColor(_color(theme, "layout.frame")))
+    legend_width, legend_height = layout_cfg.get("legend_mm", [42, 40])
+    legend.setBoxSpace(1.0)
+    legend.setColumnSpace(1.0)
+    legend.setSymbolWidth(4.0)
+    legend.setSymbolHeight(2.5)
     legend.attemptMove(
-        QgsLayoutPoint(map_x + map_width - 72, map_y + 4, QgsUnitTypes.LayoutMillimeters)
+        QgsLayoutPoint(
+            map_x + map_width - legend_width - 3,
+            map_y + 3,
+            QgsUnitTypes.LayoutMillimeters,
+        )
     )
-    legend_height = 44 if len(profile["contour_levels_m"]) <= 3 else 62
-    legend.attemptResize(QgsLayoutSize(68, legend_height, QgsUnitTypes.LayoutMillimeters))
-    layout.addLayoutItem(legend)
+    legend.attemptResize(
+        QgsLayoutSize(legend_width, legend_height, QgsUnitTypes.LayoutMillimeters)
+    )
+    if bool(profile.get("legend_enabled", True)):
+        layout.addLayoutItem(legend)
 
     if profile["scale_bar"]:
         scale_bar = QgsLayoutItemScaleBar(layout)
@@ -517,6 +563,10 @@ def _build_layout(
         scale_bar.setLinkedMap(map_item)
         scale_bar.setNumberOfSegments(3)
         scale_bar.setNumberOfSegmentsLeft(0)
+        if hasattr(scale_bar, "setTextFormat"):
+            scale_bar.setTextFormat(
+                _layout_text_format(QFont(FONT_FAMILY, 6), _color(theme, "layout.title"))
+            )
         scale_bar.attemptMove(
             QgsLayoutPoint(map_x + 5, map_y + map_height - 10, QgsUnitTypes.LayoutMillimeters)
         )
@@ -525,21 +575,18 @@ def _build_layout(
 
     if build.get("visible_footer", True):
         footer = QgsLayoutItemLabel(layout)
-        git_short = (build.get("git_commit") or "unknown")[:12]
-        source_text = "; ".join(source_names)
+        source_text = "; ".join(source_names[:2])
         footer.setText(
-            f"MGRB v{build['mgrb_version']} · commit {git_short} · {build['region_profile']} / "
-            f"{build['cartographic_profile']} · {build['theme']['palette_id']} "
-            f"{build['theme']['palette_sha256'][:12]} · Sources: {source_text} · Not for navigation"
+            f"MGRB v{build['mgrb_version']} · {build['build_id']} · {source_text}"
         )
         footer.setTextFormat(
             _layout_text_format(
-                QFont("Arial", round(float(layout_cfg["footer_pt"]))),
+                QFont(FONT_FAMILY, round(float(layout_cfg["footer_pt"]))),
                 _color(theme, "layout.footer"),
             )
         )
-        footer.attemptMove(QgsLayoutPoint(map_x, page_height - 11, QgsUnitTypes.LayoutMillimeters))
-        footer.attemptResize(QgsLayoutSize(map_width, 8, QgsUnitTypes.LayoutMillimeters))
+        footer.attemptMove(QgsLayoutPoint(map_x, page_height - 6, QgsUnitTypes.LayoutMillimeters))
+        footer.attemptResize(QgsLayoutSize(map_width, 4, QgsUnitTypes.LayoutMillimeters))
         layout.addLayoutItem(footer)
     return layout
 
@@ -550,6 +597,184 @@ def _project_has_private_paths(project_path: Path) -> bool:
             archive.read(name) for name in archive.namelist() if name.endswith((".qgs", ".xml"))
         ).decode("utf-8", errors="ignore")
     return str(ROOT).lower().replace("\\", "/") in payload.lower().replace("\\", "/")
+
+
+def _raster_coverage_qa(
+    project: QgsProject,
+    map_extent: QgsRectangle,
+    map_crs: QgsCoordinateReferenceSystem,
+    coverage_bbox: list[float],
+    actual_raster_bbox: list[float],
+    longitude_convention: str,
+    profile_name: str,
+) -> dict:
+    """Prove every inverse-projectable frame-edge point is inside source coverage."""
+    target = QgsCoordinateReferenceSystem("EPSG:4326")
+    transform = QgsCoordinateTransform(map_crs, target, project.transformContext())
+    xmin, ymin, xmax, ymax = map(float, actual_raster_bbox)
+    outside: list[list[float]] = []
+    invalid = 0
+    valid = 0
+    frame_longitudes: list[float] = []
+    frame_latitudes: list[float] = []
+    for index in range(81):
+        fraction = index / 80.0
+        x = map_extent.xMinimum() + map_extent.width() * fraction
+        y = map_extent.yMinimum() + map_extent.height() * fraction
+        for point in (
+            QgsPointXY(x, map_extent.yMinimum()),
+            QgsPointXY(x, map_extent.yMaximum()),
+            QgsPointXY(map_extent.xMinimum(), y),
+            QgsPointXY(map_extent.xMaximum(), y),
+        ):
+            try:
+                geographic = transform.transform(point)
+            except QgsCsException:
+                invalid += 1
+                continue
+            longitude = geographic.x()
+            if (longitude_convention == "360" or xmax > 180.0) and longitude < 0:
+                longitude += 360.0
+            latitude = geographic.y()
+            if not (-1800 <= longitude <= 1800 and -90.1 <= latitude <= 90.1):
+                invalid += 1
+                continue
+            valid += 1
+            frame_longitudes.append(longitude)
+            frame_latitudes.append(latitude)
+            if not (xmin - 1e-5 <= longitude <= xmax + 1e-5 and ymin - 1e-5 <= latitude <= ymax + 1e-5):
+                outside.append([longitude, latitude])
+    projection_edges_expected = longitude_convention == "360"
+    declared_present = (
+        xmin <= float(coverage_bbox[0]) + 0.25
+        and ymin <= float(coverage_bbox[1]) + 0.25
+        and xmax >= float(coverage_bbox[2]) - 0.25
+        and ymax >= float(coverage_bbox[3]) - 0.25
+    )
+    passed = (
+        valid > 0
+        and not outside
+        and declared_present
+        and (invalid == 0 or projection_edges_expected)
+    )
+    return {
+        "passed": passed,
+        "exposed_raster_footprint": not passed,
+        "coverage_bbox": coverage_bbox,
+        "actual_raster_bbox": actual_raster_bbox,
+        "declared_coverage_is_present": declared_present,
+        "sampled_valid_frame_points": valid,
+        "inverse_projected_frame_bbox": [
+            min(frame_longitudes) if frame_longitudes else None,
+            min(frame_latitudes) if frame_latitudes else None,
+            max(frame_longitudes) if frame_longitudes else None,
+            max(frame_latitudes) if frame_latitudes else None,
+        ],
+        "outside_coverage_points": len(outside),
+        "unprojectable_frame_points": invalid,
+        "projection_boundary_clipping_expected": projection_edges_expected,
+        "edge_interpretation": (
+            "projection boundary permitted; processing footprints forbidden"
+            if projection_edges_expected
+            else "all map-frame edge points must be covered"
+        ),
+    }
+
+
+def _raster_bbox(path: Path) -> list[float]:
+    dataset = gdal.Open(str(path))
+    if dataset is None:
+        raise RuntimeError(f"GDAL could not inspect raster coverage: {path}")
+    transform = dataset.GetGeoTransform()
+    xmin = transform[0]
+    ymax = transform[3]
+    xmax = xmin + transform[1] * dataset.RasterXSize
+    ymin = ymax + transform[5] * dataset.RasterYSize
+    return [min(xmin, xmax), min(ymin, ymax), max(xmin, xmax), max(ymin, ymax)]
+
+
+def _export_text_qa(png: Path, layout_cfg: dict) -> dict:
+    dataset = gdal.Open(str(png))
+    if dataset is None:
+        raise RuntimeError(f"GDAL could not reopen exported PNG for render QA: {png}")
+    bands = [dataset.GetRasterBand(index).ReadAsArray() for index in range(1, 4)]
+    rgb = np.stack(bands, axis=2)
+    _, page_height = map(float, layout_cfg["page_mm"])
+    _, map_y, _, map_height = map(float, layout_cfg["map_mm"])
+    pixel_height = rgb.shape[0]
+    title_end = max(1, round(pixel_height * map_y / page_height))
+    footer_start = min(
+        pixel_height - 1,
+        round(pixel_height * (map_y + map_height) / page_height),
+    )
+    title = detect_tofu_blocks(rgb[:title_end, :, :])
+    map_content = detect_tofu_blocks(rgb[title_end:footer_start, :, :])
+    footer = detect_tofu_blocks(rgb[footer_start:, :, :])
+    passed = bool(title["passed"] and map_content["passed"] and footer["passed"])
+    return {
+        "passed": passed,
+        "actual_export_checked": png.relative_to(ROOT).as_posix(),
+        "title_crop": title,
+        "map_labels_legend_scale_crop": map_content,
+        "footer_crop": footer,
+        "method": "full-layout repeated near-solid missing-glyph block detection",
+    }
+
+
+def _warp_crossing_raster_to_frame(
+    source: Path,
+    target: Path,
+    crs: QgsCoordinateReferenceSystem,
+    extent: QgsRectangle,
+    map_aspect: float,
+) -> dict:
+    """Pre-warp a longitude-continuation raster so QGIS never clips x > 180 degrees."""
+    target.unlink(missing_ok=True)
+    width = 1600
+    height = max(800, round(width / map_aspect))
+    warped = gdal.Warp(
+        str(target),
+        str(source),
+        options=gdal.WarpOptions(
+            format="GTiff",
+            srcSRS="+proj=longlat +datum=WGS84 +over +type=crs",
+            dstSRS=crs.toWkt(),
+            outputBounds=(
+                extent.xMinimum(),
+                extent.yMinimum(),
+                extent.xMaximum(),
+                extent.yMaximum(),
+            ),
+            width=width,
+            height=height,
+            resampleAlg="bilinear",
+            dstNodata=-32767,
+            multithread=True,
+            creationOptions=["COMPRESS=DEFLATE", "TILED=YES"],
+        ),
+    )
+    if warped is None:
+        raise RuntimeError(f"GDAL could not pre-warp antimeridian raster: {source}")
+    band = warped.GetRasterBand(1)
+    values = band.ReadAsArray()
+    nodata = band.GetNoDataValue()
+    invalid = int(np.count_nonzero(~np.isfinite(values)))
+    if nodata is not None:
+        invalid += int(np.count_nonzero(values == nodata))
+    total = int(values.size)
+    warped.FlushCache()
+    warped = None
+    return {
+        "performed": True,
+        "passed": invalid == 0,
+        "target": target.relative_to(ROOT).as_posix(),
+        "source_longitude_strategy": "WGS84 +over continuation",
+        "target_crs": crs.toProj(),
+        "pixel_dimensions": [width, height],
+        "invalid_or_nodata_pixels": invalid,
+        "total_pixels": total,
+        "exposed_processing_footprint": invalid > 0,
+    }
 
 
 def build_one(spec_path: Path, output_dir: Path, review_dir: Path) -> dict:
@@ -618,16 +843,70 @@ def build_one(spec_path: Path, output_dir: Path, review_dir: Path) -> dict:
     layer_gpkg = gpkg
     source_bathymetry = bathymetry
     if region.get("longitude_convention") == "360":
-        layer_gpkg = portable_data / "mgrb-display.gpkg"
-        _normalized_360_gpkg(gpkg, layer_gpkg)
+        if region.get("vector_longitude_convention", "360") == "360":
+            layer_gpkg = portable_data / "mgrb-display.gpkg"
+            _normalized_360_gpkg(gpkg, layer_gpkg)
+        else:
+            stale_display = portable_data / "mgrb-display.gpkg"
+            if stale_display.exists():
+                stale_display.unlink()
         source_bathymetry = portable_data / "gebco-bathymetry-360.tif"
         shutil.move(bathymetry, source_bathymetry)
         shutil.copy2(source_bathymetry, bathymetry)
         _normalize_360_raster(bathymetry)
-    bathy_layer = QgsRasterLayer(str(bathymetry), "GEBCO 2026 bathymetry")
+
+    extent = _extent_from_bbox(
+        project, region["bbox"], crs, region.get("longitude_convention", "180")
+    )
+    _, _, map_width, map_height = map(float, spec["layout"]["map_mm"])
+    map_aspect = map_width / map_height
+    if extent.width() / extent.height() > map_aspect:
+        fitted_height = extent.width() / map_aspect
+        padding = (fitted_height - extent.height()) / 2.0
+        extent = QgsRectangle(
+            extent.xMinimum(),
+            extent.yMinimum() - padding,
+            extent.xMaximum(),
+            extent.yMaximum() + padding,
+        )
+    else:
+        fitted_width = extent.height() * map_aspect
+        padding = (fitted_width - extent.width()) / 2.0
+        extent = QgsRectangle(
+            extent.xMinimum() - padding,
+            extent.yMinimum(),
+            extent.xMaximum() + padding,
+            extent.yMaximum(),
+        )
+
+    render_bathymetry = bathymetry
+    display_bathymetry = None
+    display_warp_checks = {
+        "performed": False,
+        "passed": True,
+        "exposed_processing_footprint": False,
+        "reason": "source raster does not require a longitude-continuation pre-warp",
+    }
+    source_raster_bbox = _raster_bbox(source_bathymetry)
+    if region.get("longitude_convention") == "180" and source_raster_bbox[2] > 180.0:
+        display_bathymetry = portable_data / "gebco-bathymetry-display.tif"
+        display_warp_checks = _warp_crossing_raster_to_frame(
+            bathymetry,
+            display_bathymetry,
+            crs,
+            extent,
+            map_aspect,
+        )
+        if not display_warp_checks["passed"]:
+            raise RuntimeError(
+                f"Antimeridian display-warp QA failed for {build_id}: {display_warp_checks}"
+            )
+        render_bathymetry = display_bathymetry
+
+    bathy_layer = QgsRasterLayer(str(render_bathymetry), "GEBCO 2026 bathymetry")
     if not bathy_layer.isValid():
-        raise RuntimeError(f"Invalid raster: {bathymetry}")
-    _style_raster(bathy_layer, spec["theme"])
+        raise RuntimeError(f"Invalid raster: {render_bathymetry}")
+    _style_raster(bathy_layer, spec["theme"], spec["cartographic_profile"])
     project.addMapLayer(bathy_layer, False)
     base_group.addLayer(bathy_layer)
 
@@ -645,6 +924,10 @@ def build_one(spec_path: Path, output_dir: Path, review_dir: Path) -> dict:
     _style_contours(contour_layer, spec["theme"], spec["cartographic_profile"])
     project.addMapLayer(contour_layer, False)
     base_group.insertLayer(0, contour_layer)
+    if float(spec["cartographic_profile"].get("contour_opacity", 1.0)) <= 0:
+        contour_node = base_group.findLayer(contour_layer.id())
+        if contour_node is not None:
+            contour_node.setItemVisibilityChecked(False)
 
     land_layer = _add_vector(project, base_group, layer_gpkg, "land", "Land")
     if land_layer:
@@ -652,6 +935,12 @@ def build_one(spec_path: Path, output_dir: Path, review_dir: Path) -> dict:
     coastline_layer = _add_vector(project, base_group, layer_gpkg, "coastline", "Coastline")
     if coastline_layer:
         _style_line(coastline_layer, _color(spec["theme"], "coastline"), 0.24)
+    if region["name"] == "pacific_360":
+        for layer in (land_layer, coastline_layer):
+            if layer is not None:
+                node = base_group.findLayer(layer.id())
+                if node is not None:
+                    node.setItemVisibilityChecked(False)
     boundary_layer = _add_vector(
         project, reference_group, layer_gpkg, "maritime_boundaries", "Maritime status references"
     )
@@ -661,11 +950,17 @@ def build_one(spec_path: Path, output_dir: Path, review_dir: Path) -> dict:
     if labels_layer:
         _style_labels(labels_layer, spec["theme"], spec["cartographic_profile"])
 
-    extent = _extent_from_bbox(
-        project, region["bbox"], crs, region.get("longitude_convention", "180")
-    )
+    source_aliases = {
+        "gebco_2026": "GEBCO 2026",
+        "gshhg_2_3_7": "GSHHG 2.3.7",
+        "natural_earth_5_1_2": "Natural Earth 5.1.2",
+    }
     source_names = [
-        f"{record['provider']} ({record['version_or_date']})" for record in spec["sources"]
+        source_aliases.get(
+            record["source_id"],
+            f"{record['provider']} {record['version_or_date']}",
+        )
+        for record in spec["sources"]
     ]
     layout = _build_layout(
         project,
@@ -673,8 +968,35 @@ def build_one(spec_path: Path, output_dir: Path, review_dir: Path) -> dict:
         extent,
         crs,
         source_names,
-        [contour_layer, bathy_layer, boundary_layer],
+        (
+            [contour_layer, bathy_layer, boundary_layer]
+            if float(spec["cartographic_profile"].get("contour_opacity", 1.0)) > 0
+            else [bathy_layer, boundary_layer]
+        ),
     )
+    layout_checks = layout_qa(spec["layout"], tuple(float(value) for value in region["bbox"]))
+    if (
+        not layout_checks["orientation_is_adaptive"]
+        or layout_checks["excessive_blank_margins"]
+        or layout_checks["awkward_map_frame"]
+    ):
+        raise RuntimeError(f"Adaptive layout QA failed for {build_id}: {layout_checks}")
+    coverage_checks = _raster_coverage_qa(
+        project,
+        layout.referenceMap().extent(),
+        crs,
+        region.get("source_coverage_bbox", region["bbox"]),
+        source_raster_bbox,
+        region.get("longitude_convention", "180"),
+        build["cartographic_profile"],
+    )
+    coverage_checks["display_warp"] = display_warp_checks
+    coverage_checks["passed"] = bool(
+        coverage_checks["passed"] and display_warp_checks["passed"]
+    )
+    coverage_checks["exposed_raster_footprint"] = not coverage_checks["passed"]
+    if not coverage_checks["passed"]:
+        raise RuntimeError(f"Raster coverage QA failed for {build_id}: {coverage_checks}")
 
     if not project.write(str(qgz)):
         raise RuntimeError(f"Failed to write QGIS project: {qgz}")
@@ -701,6 +1023,9 @@ def build_one(spec_path: Path, output_dir: Path, review_dir: Path) -> dict:
     for kind, result in results.items():
         if result != QgsLayoutExporter.Success or not outputs[kind].exists():
             raise RuntimeError(f"{kind.upper()} export failed for {build_id}: {result}")
+    text_render_checks = _export_text_qa(outputs["png"], spec["layout"])
+    if not text_render_checks["passed"]:
+        raise RuntimeError(f"Missing-glyph/tofu render QA failed for {build_id}: {text_render_checks}")
 
     lineage_json = json.dumps(build, sort_keys=True)
     png_image = QImage(str(outputs["png"]))
@@ -747,7 +1072,17 @@ def build_one(spec_path: Path, output_dir: Path, review_dir: Path) -> dict:
         for artifact in outputs.values()
     ]
     qgis_artifacts = list(
-        dict.fromkeys([qgz, gpkg, layer_gpkg, source_bathymetry, bathymetry, contour_path])
+        dict.fromkeys(
+            [
+                qgz,
+                gpkg,
+                layer_gpkg,
+                source_bathymetry,
+                bathymetry,
+                contour_path,
+                *([display_bathymetry] if display_bathymetry is not None else []),
+            ]
+        )
     )
     qgis_sidecars = [
         write_artifact_sidecar(
@@ -792,6 +1127,12 @@ def build_one(spec_path: Path, output_dir: Path, review_dir: Path) -> dict:
             layout.referenceMap().extent().yMaximum(),
         ],
         "artifact_verification": artifact_verification,
+        "visual_qa": {
+            "bundled_font": FONT_PREFLIGHT,
+            "exported_text": text_render_checks,
+            "raster_coverage": coverage_checks,
+            "layout_geometry": layout_checks,
+        },
         "exports": {kind: path.relative_to(ROOT).as_posix() for kind, path in outputs.items()},
     }
     reopened.clear()
@@ -821,10 +1162,10 @@ def _contact_sheet(review_dir: Path, validations: list[dict]) -> Path:
     )
     sheet.fill(QColor("#f4f4f2"))
     painter = QPainter(sheet)
-    painter.setFont(_font("Arial", 24, bold=True))
+    painter.setFont(_font(FONT_FAMILY, 24, bold=True))
     painter.setPen(QColor("#222222"))
     painter.drawText(margin, 36, "MGRB v1.0 cartography owner-review contact sheet")
-    painter.setFont(QFont("Arial", 16))
+    painter.setFont(QFont(FONT_FAMILY, 16))
     for index, validation in enumerate(validations):
         row, column = divmod(index, 2)
         x = margin + column * (cell_width + margin)

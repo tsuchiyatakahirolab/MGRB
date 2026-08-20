@@ -27,11 +27,17 @@ class CartographicProfile:
     coastline_detail: str
     contour_levels_m: tuple[int, ...]
     contour_width_mm: float
+    contour_opacity: float
+    bathymetry_opacity: float
     label_rank_max: int
     label_size_pt: float
     graticule_interval_degrees: float
+    graticule_enabled: bool
+    graticule_width_mm: float
+    graticule_opacity: float
     graticule_annotation: bool
     scale_bar: bool
+    legend_enabled: bool
     layout: str
 
 
@@ -78,11 +84,17 @@ def load_profiles(path: Path) -> dict[str, CartographicProfile]:
             coastline_detail=str(cfg["coastline_detail"]),
             contour_levels_m=tuple(int(value) for value in cfg["contour_levels_m"]),
             contour_width_mm=float(cfg["contour_width_mm"]),
+            contour_opacity=float(cfg.get("contour_opacity", 1.0)),
+            bathymetry_opacity=float(cfg.get("bathymetry_opacity", 1.0)),
             label_rank_max=int(cfg["label_rank_max"]),
             label_size_pt=float(cfg["label_size_pt"]),
             graticule_interval_degrees=float(cfg["graticule_interval_degrees"]),
+            graticule_enabled=bool(cfg.get("graticule_enabled", True)),
+            graticule_width_mm=float(cfg.get("graticule_width_mm", 0.10)),
+            graticule_opacity=float(cfg.get("graticule_opacity", 1.0)),
             graticule_annotation=bool(cfg["graticule_annotation"]),
             scale_bar=bool(cfg["scale_bar"]),
+            legend_enabled=bool(cfg.get("legend_enabled", True)),
             layout=str(cfg["layout"]),
         )
     return profiles

@@ -12,6 +12,7 @@ from pathlib import Path
 
 from osgeo import gdal, ogr, osr  # type: ignore
 
+from mgrb.cartography import resolve_layout_geometry
 from mgrb.config import load_profiles, load_yaml
 from mgrb.provenance import sha256
 from mgrb.theme import resolve_theme
@@ -64,8 +65,8 @@ def main():
 
     tif = OUT / "bathymetry.tif"
     rdriver = gdal.GetDriverByName("GTiff")
-    raster = rdriver.Create(str(tif), 55, 70, 1, gdal.GDT_Int16)
-    raster.SetGeoTransform((119.0, 0.1, 0, 25.5, 0, -0.1))
+    raster = rdriver.Create(str(tif), 85, 102, 1, gdal.GDT_Int16)
+    raster.SetGeoTransform((117.5, 0.1, 0, 27.1, 0, -0.1))
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)
     raster.SetProjection(srs.ExportToWkt())
@@ -76,7 +77,10 @@ def main():
     raster = None
 
     profile = load_profiles(ROOT / "config/profiles.yml")["local"]
-    layout = load_yaml(ROOT / "config/layouts.yml")["layouts"][profile.layout]
+    layout = resolve_layout_geometry(
+        (119.0, 18.5, 124.5, 25.5),
+        load_yaml(ROOT / "config/layouts.yml")["layouts"][profile.layout],
+    )
     theme = resolve_theme("canonical", ROOT / "config/themes")
     style_manifest = theme.manifest()
     style_manifest.update(
@@ -155,6 +159,7 @@ def main():
         "region": {
             "name": "test_region",
             "bbox": [119.0, 18.5, 124.5, 25.5],
+            "source_coverage_bbox": [117.5, 16.96, 126.0, 27.04],
             "longitude_convention": "180",
             "display_crs": "+proj=laea +lat_0=22 +lon_0=122 +datum=WGS84 +units=m +no_defs +type=crs",
             "purpose": "CI-only synthetic fixture",

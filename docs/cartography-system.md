@@ -24,10 +24,15 @@ collapse at ±180°.
 ## Scale profiles
 
 `config/profiles.yml` controls contour levels and weights, coastline source/detail,
-label rank and size, graticule spacing, scale-bar use, and layout. Local and regional
-profiles retain five analytically meaningful GEBCO contours. Theatre maps use only
-the 1,000 m, 4,000 m, and 6,000 m depth references, sparser labels, a 15° graticule,
-and no misleading Pacific-wide linear scale bar.
+label rank and size, layer opacity, graticule spacing, scale-bar use, and layout. Local and regional
+profiles retain five analytically meaningful GEBCO contours. The theatre profile keeps
+the 1,000 m, 4,000 m, and 6,000 m depth references available in the project but hides
+them in the publication layout by default; it also suppresses fine labels and the
+graticule, and omits a misleading Pacific-wide linear scale bar.
+The theatre profile reduces bathymetry opacity and source-grid density so
+fine texture does not compete with major basin, trench, ridge, island-arc, and
+continental context. `overlay-quiet` is the lower-contrast Local/Regional presentation
+variant for AIS, SAR, and trajectory overlays; it changes no depth semantics.
 
 Depth meanings and maritime-status meanings are defined in
 `config/semantics.yml`, not in a palette. Status lines use dash pattern and width in
@@ -49,8 +54,8 @@ supported.
 
 ## Theme resolution
 
-Canonical themes live in `config/themes/`: `canonical`, `grayscale`, and
-`print-muted`. An external theme is a partial YAML override of canonical presentation
+Canonical themes live in `config/themes/`: `canonical`, `grayscale`, `print-muted`,
+and `overlay-quiet`. An external theme is a partial YAML override of canonical presentation
 values; `examples/custom-theme.yml` is a complete example.
 
 ```bash
@@ -69,11 +74,34 @@ semantics, geometry, attribution, and MGRB lineage remain unchanged.
 
 ## Publication layouts and provenance
 
-The layouts are article-local (210×148 mm), article-regional (240×170 mm), and
-article-Pacific (280×170 mm). QGIS exports each representative build as PDF, 300 dpi
+Each article layout resolves to portrait, near-square, or landscape from the
+latitude-adjusted research-extent aspect ratio. Taiwan East/South resolves to
+148×210 mm portrait; Pacific resolves to 280×170 mm landscape. Fixed page orientation
+is not a researcher input. Compact headers, legends, and one-line visible attribution
+reserve most of the page for the map. Full lineage remains embedded and sidecar-based.
+
+GEBCO and public vector requests use deterministic profile-specific geographic buffers
+beyond the final research extent. Before export, MGRB inverse-projects sampled map-frame
+edges and blocks the render unless every projectable point falls within the actual
+raster coverage. Unprojectable Robinson corners are recorded as justified projection
+boundaries, never accepted as processing footprints.
+Pacific-wide Robinson output uses a generalized global GEBCO source grid because valid
+inverse-projected areas near the curved frame extend beyond a simple Pacific bbox.
+Where a buffered regional source continues east of 180°, MGRB pre-warps it with an
+explicit WGS84 `+over` longitude pipeline into the fitted map frame and rejects any
+nodata pixel in that display raster. This prevents an otherwise valid geographic
+coverage bbox from concealing a reprojection footprint.
+
+QGIS exports each representative build as PDF, 300 dpi
 PNG, and SVG, then reopens every `.qgz` and records its QGIS version, layers, layouts,
 and export paths. Single-column (89 mm) and double-column (178 mm) previews are
 generated from the QGIS render.
+
+Headless Qt may have no usable system font database. MGRB pins Noto Sans v2.015 under
+the SIL OFL, registers it explicitly, verifies glyph coverage/fingerprints, and scans
+the actual PNG title, map-label/legend/scale, and footer crops for repeated tofu blocks.
+Natural Earth's ASCII label field is preferred to avoid DBF mojibake. An export success code
+alone is not sufficient.
 
 Each project/export records MGRB version, Git commit, build timestamp, region,
 cartographic and layout profiles, CRS, longitude convention, source manifest, theme

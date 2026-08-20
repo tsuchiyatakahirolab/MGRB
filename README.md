@@ -13,6 +13,8 @@ MGRB integrates public bathymetry, coastline and maritime-zone reference data in
 - Maritime-zone reference schema that separates geometry from legal status.
 - QGIS styles for bathymetry, land, coastline and maritime-zone references.
 - Headless PyQGIS project generation and publication-layout export.
+- Release-bundled OFL typography with headless glyph/tofu render validation.
+- Buffered source acquisition and adaptive portrait/square/landscape page geometry.
 - QGIS geodesic antimeridian splitting through `native:antimeridiansplit`.
 - Provenance manifests with SHA-256 hashes, MGRB version and Git commit.
 - CI templates for Python tests and headless QGIS validation.
@@ -68,7 +70,10 @@ QT_QPA_PLATFORM=offscreen python scripts/build_qgis_projects.py
 ```
 
 This produces the six required review variants: local canonical, local external
-custom theme, regional, Western Pacific, Pacific-wide 0–360, and grayscale. See
+custom theme, overlay-quiet regional, Western Pacific, Pacific-wide 0–360, and
+grayscale. Each export is blocked if the actual PNG contains repeated missing-glyph
+boxes, if source coverage cannot fill the projectable map-frame edge, or if layout
+orientation/margins are unsuitable. See
 `docs/cartography-system.md` for profile, theme, source-selection, antimeridian,
 provenance, and citation details.
 
