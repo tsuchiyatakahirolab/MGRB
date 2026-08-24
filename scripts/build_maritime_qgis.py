@@ -733,6 +733,7 @@ def build(spec_path: Path) -> dict:
         raise RuntimeError(f"Portable-copy reopen failed: {portable_invalid}")
 
     layer_count = len(project.mapLayers())
+    evidence_dominates_basemap = bathy.opacity() <= 0.66
     project.clear()
     gc.collect()
     QgsApplication.processEvents()
@@ -774,7 +775,7 @@ def build(spec_path: Path) -> dict:
             "raster_coverage": raster_qa,
             "media_raster_coverage": media_raster_qa,
             "layout_geometry": layout_checks,
-            "track_evidence_dominates_basemap": bathy.opacity() <= 0.66,
+            "track_evidence_dominates_basemap": evidence_dominates_basemap,
         },
     }
     validation_path = package / "metadata" / "qgis-validation.json"
