@@ -1,0 +1,392 @@
+[
+  {
+    "search_id": "R01",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "Global Fishing Watch AIS presence events SAR API China fishing",
+    "engine_or_route": "web",
+    "candidate_families": "GFW APIs and datasets",
+    "materially_new_high_value_family": "YES",
+    "disposition": "GFW product family"
+  },
+  {
+    "search_id": "R02",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "site:zenodo.org Global Fishing Watch fishing effort v3",
+    "engine_or_route": "web",
+    "candidate_families": "GFW Zenodo archive",
+    "materially_new_high_value_family": "NO",
+    "disposition": "same provider"
+  },
+  {
+    "search_id": "R03",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "Deep-Sea Mining Watch vessel data download",
+    "engine_or_route": "web",
+    "candidate_families": "DSM Watch",
+    "materially_new_high_value_family": "YES",
+    "disposition": "specialized AIS-derived provider"
+  },
+  {
+    "search_id": "R04",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "Mongabay CNN China deep sea mining vessels AIS data",
+    "engine_or_route": "web",
+    "candidate_families": "Mongabay; MarineTraffic; DSM Watch",
+    "materially_new_high_value_family": "NO",
+    "disposition": "citation snowball to known providers"
+  },
+  {
+    "search_id": "R05",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "AMTI Chinese coast guard tracker AIS data download",
+    "engine_or_route": "web",
+    "candidate_families": "AMTI; Starboard; MarineTraffic",
+    "materially_new_high_value_family": "YES",
+    "disposition": "reference/identity family"
+  },
+  {
+    "search_id": "R06",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "AMTI Hainan maritime militia vessel list MMSI",
+    "engine_or_route": "web",
+    "candidate_families": "AMTI public Google Sheet",
+    "materially_new_high_value_family": "YES",
+    "disposition": "open identity crosswalk"
+  },
+  {
+    "search_id": "R07",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "SeaLight China maritime militia AIS data source",
+    "engine_or_route": "web",
+    "candidate_families": "SeaLight; Starboard; SCSDI",
+    "materially_new_high_value_family": "NO",
+    "disposition": "known reference providers"
+  },
+  {
+    "search_id": "R08",
+    "date_utc": "2026-08-25",
+    "language": "Chinese simplified",
+    "query": "南海 战略态势 感知 船舶 AIS 航迹 数据",
+    "engine_or_route": "web",
+    "candidate_families": "SCSPI",
+    "materially_new_high_value_family": "YES",
+    "disposition": "Chinese-language reference family"
+  },
+  {
+    "search_id": "R09",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "South China Sea Data Initiative download dataset",
+    "engine_or_route": "web",
+    "candidate_families": "SCSDI; Harvard Dataverse",
+    "materially_new_high_value_family": "YES",
+    "disposition": "open incident data family"
+  },
+  {
+    "search_id": "R10",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "ChinaPower raw maritime incident data",
+    "engine_or_route": "web",
+    "candidate_families": "ChinaPower Google Sheet",
+    "materially_new_high_value_family": "YES",
+    "disposition": "open event/crosswalk family"
+  },
+  {
+    "search_id": "R11",
+    "date_utc": "2026-08-25",
+    "language": "Japanese",
+    "query": "中国海軍 艦艇 動向 統合幕僚監部 公表",
+    "engine_or_route": "web",
+    "candidate_families": "Japan Joint Staff",
+    "materially_new_high_value_family": "YES",
+    "disposition": "official observations"
+  },
+  {
+    "search_id": "R12",
+    "date_utc": "2026-08-25",
+    "language": "Japanese",
+    "query": "中国海警 尖閣 接続水域 統計 海上保安庁",
+    "engine_or_route": "web",
+    "candidate_families": "Japan Coast Guard",
+    "materially_new_high_value_family": "YES",
+    "disposition": "official CCG presence"
+  },
+  {
+    "search_id": "R13",
+    "date_utc": "2026-08-25",
+    "language": "Traditional Chinese",
+    "query": "中國海警 船位 海巡署 蘭嶼 東沙 公布",
+    "engine_or_route": "web",
+    "candidate_families": "Taiwan CGA",
+    "materially_new_high_value_family": "YES",
+    "disposition": "official Taiwan observations"
+  },
+  {
+    "search_id": "R14",
+    "date_utc": "2026-08-25",
+    "language": "Traditional Chinese",
+    "query": "國防部 中共 解放軍 艦艇 動態 圖",
+    "engine_or_route": "web",
+    "candidate_families": "Taiwan MND",
+    "materially_new_high_value_family": "YES",
+    "disposition": "daily official aggregates/maps"
+  },
+  {
+    "search_id": "R15",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "Philippine Coast Guard Chinese research vessel track Xiang Yang Hong",
+    "engine_or_route": "web",
+    "candidate_families": "Philippines PCG/PIA; Canada DVD",
+    "materially_new_high_value_family": "YES",
+    "disposition": "official corroboration; partner detection"
+  },
+  {
+    "search_id": "R16",
+    "date_utc": "2026-08-25",
+    "language": "Japanese",
+    "query": "JIIA 中国 海洋調査船 AIS 航跡",
+    "engine_or_route": "web",
+    "candidate_families": "JIIA; commercial AIS",
+    "materially_new_high_value_family": "YES",
+    "disposition": "research report identity evidence"
+  },
+  {
+    "search_id": "R17",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "PANGAEA Xue Long ship track GPS",
+    "engine_or_route": "web",
+    "candidate_families": "PANGAEA",
+    "materially_new_high_value_family": "YES",
+    "disposition": "open raw research-vessel track"
+  },
+  {
+    "search_id": "R18",
+    "date_utc": "2026-08-25",
+    "language": "Chinese simplified",
+    "query": "雪龙 雪龙2 科考 航迹 GPS 数据 下载",
+    "engine_or_route": "web",
+    "candidate_families": "China Polar Data Center",
+    "materially_new_high_value_family": "YES",
+    "disposition": "polar cruise catalog"
+  },
+  {
+    "search_id": "R19",
+    "date_utc": "2026-08-25",
+    "language": "Chinese simplified",
+    "query": "科学号 嘉庚号 向阳红 航次 航迹 数据共享",
+    "engine_or_route": "web",
+    "candidate_families": "NODC/NORC; COMS; XMU; Digital SCS",
+    "materially_new_high_value_family": "YES",
+    "disposition": "Chinese cruise portal families"
+  },
+  {
+    "search_id": "R20",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "site:figshare.com global SAR vessel detections AIS matched",
+    "engine_or_route": "web",
+    "candidate_families": "GFW Figshare SAR study; xView3",
+    "materially_new_high_value_family": "YES",
+    "disposition": "open detection/model archives"
+  },
+  {
+    "search_id": "R21",
+    "date_utc": "2026-08-25",
+    "language": "Chinese simplified",
+    "query": "东海 渔船 轨迹 数据集 AIS 北斗 下载",
+    "engine_or_route": "web",
+    "candidate_families": "Kaggle; HeyWhale; Tianchi",
+    "materially_new_high_value_family": "YES",
+    "disposition": "regional de-identified trajectory families"
+  },
+  {
+    "search_id": "R22",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "Chinese coastal AIS dataset Kaggle license",
+    "engine_or_route": "web",
+    "candidate_families": "Kaggle yccwcc",
+    "materially_new_high_value_family": "NO",
+    "disposition": "known family; license metadata"
+  },
+  {
+    "search_id": "R23",
+    "date_utc": "2026-08-25",
+    "language": "Chinese simplified",
+    "query": "天池 智慧海洋 渔船 轨迹 数据 许可",
+    "engine_or_route": "web",
+    "candidate_families": "Tianchi; GitHub mirrors",
+    "materially_new_high_value_family": "NO",
+    "disposition": "known competition family; unclear lineage"
+  },
+  {
+    "search_id": "R24",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "NOAA VIIRS boat detection daily CSV Asia download",
+    "engine_or_route": "web",
+    "candidate_families": "NOAA/EOG VBD",
+    "materially_new_high_value_family": "YES",
+    "disposition": "new non-AIS detection family"
+  },
+  {
+    "search_id": "R25",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "Skylight API maritime events vessel history",
+    "engine_or_route": "web",
+    "candidate_families": "Skylight; ORBCOMM; GFW",
+    "materially_new_high_value_family": "YES",
+    "disposition": "partner-only monitoring"
+  },
+  {
+    "search_id": "R26",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "SeaVision API vessel history SAR access",
+    "engine_or_route": "web",
+    "candidate_families": "SeaVision/MSSIS",
+    "materially_new_high_value_family": "YES",
+    "disposition": "partner-only government platform"
+  },
+  {
+    "search_id": "R27",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "MarineTraffic Kpler Starboard Spire historical AIS API terms redistribution",
+    "engine_or_route": "web",
+    "candidate_families": "commercial AIS providers",
+    "materially_new_high_value_family": "YES",
+    "disposition": "commercial provider universe"
+  },
+  {
+    "search_id": "R28",
+    "date_utc": "2026-08-25",
+    "language": "Chinese simplified",
+    "query": "船讯网 船队在线 海事 AIS API 历史轨迹",
+    "engine_or_route": "web",
+    "candidate_families": "ShipXY; HiFleet; ChinaPorts",
+    "materially_new_high_value_family": "YES",
+    "disposition": "Chinese commercial universe"
+  },
+  {
+    "search_id": "R29",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "CCHDO Chinese research vessel cruise data",
+    "engine_or_route": "web",
+    "candidate_families": "CCHDO; MGDS/R2R; NCEI",
+    "materially_new_high_value_family": "YES",
+    "disposition": "open cruise/station archives"
+  },
+  {
+    "search_id": "R30",
+    "date_utc": "2026-08-25",
+    "language": "Chinese simplified",
+    "query": "国家地球系统科学数据中心 科考 航次 航迹",
+    "engine_or_route": "web",
+    "candidate_families": "National Earth System Science Data Center",
+    "materially_new_high_value_family": "YES",
+    "disposition": "late new cruise-data family; added P1"
+  },
+  {
+    "search_id": "S01",
+    "date_utc": "2026-08-25",
+    "language": "Chinese simplified",
+    "query": "中国 海洋 调查船 航迹 数据集 下载 经纬度 AIS 北斗 公开",
+    "engine_or_route": "web",
+    "candidate_families": "known Kaggle/FUSAR/Digital SCS plus geodata",
+    "materially_new_high_value_family": "YES",
+    "disposition": "last new family was geodata; saturation counter reset"
+  },
+  {
+    "search_id": "S01b",
+    "date_utc": "2026-08-25",
+    "language": "Traditional Chinese;Japanese;Korean",
+    "query": "中國海巡/中国海警/중국 해경 research-vessel track dataset",
+    "engine_or_route": "web",
+    "candidate_families": "official reports and known datasets",
+    "materially_new_high_value_family": "NO",
+    "disposition": "no new high-value Chinese actor provider"
+  },
+  {
+    "search_id": "S02",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "site:zenodo.org OR figshare OR datadryad OR dataverse Chinese coast guard vessel trajectory",
+    "engine_or_route": "web",
+    "candidate_families": "regional-irrelevant AIS benchmarks and known GFW",
+    "materially_new_high_value_family": "NO",
+    "disposition": "first consecutive no-new round"
+  },
+  {
+    "search_id": "S03",
+    "date_utc": "2026-08-25",
+    "language": "English;Japanese;Korean;Traditional Chinese",
+    "query": "official government domains Chinese vessel track coordinates open data",
+    "engine_or_route": "web",
+    "candidate_families": "known official reports; Korea logistics platform",
+    "materially_new_high_value_family": "NO",
+    "disposition": "provisional second no-new round"
+  },
+  {
+    "search_id": "S04",
+    "date_utc": "2026-08-25",
+    "language": "Simplified Chinese;Traditional Chinese;English",
+    "query": "China MSA AIS accident reports; Taiwan NODASS AIS; Southeast Asian and Five Eyes official monitoring",
+    "engine_or_route": "web",
+    "candidate_families": "China MSA; Taiwan NODASS",
+    "materially_new_high_value_family": "YES",
+    "disposition": "new official evidence/catalog families; saturation counter reset"
+  },
+  {
+    "search_id": "S05",
+    "date_utc": "2026-08-25",
+    "language": "Indonesian;English",
+    "query": "Vietnam Malaysia Indonesia Australia New Zealand Chinese vessel official tracking data",
+    "engine_or_route": "web",
+    "candidate_families": "Bakamla; IOJI; WCPFC registry",
+    "materially_new_high_value_family": "YES",
+    "disposition": "new official regional and RFMO identity families; counter reset"
+  },
+  {
+    "search_id": "S06",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "Chinese fishing vessel public registry MMSI WCPFC IOTC SPRFMO",
+    "engine_or_route": "web",
+    "candidate_families": "WCPFC; IOTC; SPRFMO; known cruise archives",
+    "materially_new_high_value_family": "YES",
+    "disposition": "RFMO identity/aggregate family completed; counter reset"
+  },
+  {
+    "search_id": "S07",
+    "date_utc": "2026-08-25",
+    "language": "English",
+    "query": "named Xiang Yang Hong Yuan Wang CCG militia downloadable track dataset",
+    "engine_or_route": "web",
+    "candidate_families": "known commercial viewers; AMTI; IOJI references",
+    "materially_new_high_value_family": "NO",
+    "disposition": "first consecutive no-new high-value provider round"
+  },
+  {
+    "search_id": "S08",
+    "date_utc": "2026-08-25",
+    "language": "Simplified Chinese;Traditional Chinese;Japanese;Korean",
+    "query": "Chinese vessel track open data 2025 multilingual final sweep",
+    "engine_or_route": "web",
+    "candidate_families": "Ships66/ChinaPorts commercial; known JCG/JIIA/GFW",
+    "materially_new_high_value_family": "NO",
+    "disposition": "second consecutive no-new high-value provider round; census saturated"
+  }
+]

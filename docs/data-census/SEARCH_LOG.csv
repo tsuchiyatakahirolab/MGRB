@@ -1,0 +1,40 @@
+search_id,date_utc,language,query,engine_or_route,candidate_families,materially_new_high_value_family,disposition
+R01,2026-08-25,English,Global Fishing Watch AIS presence events SAR API China fishing,web,GFW APIs and datasets,YES,GFW product family
+R02,2026-08-25,English,site:zenodo.org Global Fishing Watch fishing effort v3,web,GFW Zenodo archive,NO,same provider
+R03,2026-08-25,English,Deep-Sea Mining Watch vessel data download,web,DSM Watch,YES,specialized AIS-derived provider
+R04,2026-08-25,English,Mongabay CNN China deep sea mining vessels AIS data,web,Mongabay; MarineTraffic; DSM Watch,NO,citation snowball to known providers
+R05,2026-08-25,English,AMTI Chinese coast guard tracker AIS data download,web,AMTI; Starboard; MarineTraffic,YES,reference/identity family
+R06,2026-08-25,English,AMTI Hainan maritime militia vessel list MMSI,web,AMTI public Google Sheet,YES,open identity crosswalk
+R07,2026-08-25,English,SeaLight China maritime militia AIS data source,web,SeaLight; Starboard; SCSDI,NO,known reference providers
+R08,2026-08-25,Chinese simplified,南海 战略态势 感知 船舶 AIS 航迹 数据,web,SCSPI,YES,Chinese-language reference family
+R09,2026-08-25,English,South China Sea Data Initiative download dataset,web,SCSDI; Harvard Dataverse,YES,open incident data family
+R10,2026-08-25,English,ChinaPower raw maritime incident data,web,ChinaPower Google Sheet,YES,open event/crosswalk family
+R11,2026-08-25,Japanese,中国海軍 艦艇 動向 統合幕僚監部 公表,web,Japan Joint Staff,YES,official observations
+R12,2026-08-25,Japanese,中国海警 尖閣 接続水域 統計 海上保安庁,web,Japan Coast Guard,YES,official CCG presence
+R13,2026-08-25,Traditional Chinese,中國海警 船位 海巡署 蘭嶼 東沙 公布,web,Taiwan CGA,YES,official Taiwan observations
+R14,2026-08-25,Traditional Chinese,國防部 中共 解放軍 艦艇 動態 圖,web,Taiwan MND,YES,daily official aggregates/maps
+R15,2026-08-25,English,Philippine Coast Guard Chinese research vessel track Xiang Yang Hong,web,Philippines PCG/PIA; Canada DVD,YES,official corroboration; partner detection
+R16,2026-08-25,Japanese,JIIA 中国 海洋調査船 AIS 航跡,web,JIIA; commercial AIS,YES,research report identity evidence
+R17,2026-08-25,English,PANGAEA Xue Long ship track GPS,web,PANGAEA,YES,open raw research-vessel track
+R18,2026-08-25,Chinese simplified,雪龙 雪龙2 科考 航迹 GPS 数据 下载,web,China Polar Data Center,YES,polar cruise catalog
+R19,2026-08-25,Chinese simplified,科学号 嘉庚号 向阳红 航次 航迹 数据共享,web,NODC/NORC; COMS; XMU; Digital SCS,YES,Chinese cruise portal families
+R20,2026-08-25,English,site:figshare.com global SAR vessel detections AIS matched,web,GFW Figshare SAR study; xView3,YES,open detection/model archives
+R21,2026-08-25,Chinese simplified,东海 渔船 轨迹 数据集 AIS 北斗 下载,web,Kaggle; HeyWhale; Tianchi,YES,regional de-identified trajectory families
+R22,2026-08-25,English,Chinese coastal AIS dataset Kaggle license,web,Kaggle yccwcc,NO,known family; license metadata
+R23,2026-08-25,Chinese simplified,天池 智慧海洋 渔船 轨迹 数据 许可,web,Tianchi; GitHub mirrors,NO,known competition family; unclear lineage
+R24,2026-08-25,English,NOAA VIIRS boat detection daily CSV Asia download,web,NOAA/EOG VBD,YES,new non-AIS detection family
+R25,2026-08-25,English,Skylight API maritime events vessel history,web,Skylight; ORBCOMM; GFW,YES,partner-only monitoring
+R26,2026-08-25,English,SeaVision API vessel history SAR access,web,SeaVision/MSSIS,YES,partner-only government platform
+R27,2026-08-25,English,MarineTraffic Kpler Starboard Spire historical AIS API terms redistribution,web,commercial AIS providers,YES,commercial provider universe
+R28,2026-08-25,Chinese simplified,船讯网 船队在线 海事 AIS API 历史轨迹,web,ShipXY; HiFleet; ChinaPorts,YES,Chinese commercial universe
+R29,2026-08-25,English,CCHDO Chinese research vessel cruise data,web,CCHDO; MGDS/R2R; NCEI,YES,open cruise/station archives
+R30,2026-08-25,Chinese simplified,国家地球系统科学数据中心 科考 航次 航迹,web,National Earth System Science Data Center,YES,late new cruise-data family; added P1
+S01,2026-08-25,Chinese simplified,中国 海洋 调查船 航迹 数据集 下载 经纬度 AIS 北斗 公开,web,known Kaggle/FUSAR/Digital SCS plus geodata,YES,last new family was geodata; saturation counter reset
+S01b,2026-08-25,Traditional Chinese;Japanese;Korean,中國海巡/中国海警/중국 해경 research-vessel track dataset,web,official reports and known datasets,NO,no new high-value Chinese actor provider
+S02,2026-08-25,English,site:zenodo.org OR figshare OR datadryad OR dataverse Chinese coast guard vessel trajectory,web,regional-irrelevant AIS benchmarks and known GFW,NO,first consecutive no-new round
+S03,2026-08-25,English;Japanese;Korean;Traditional Chinese,official government domains Chinese vessel track coordinates open data,web,known official reports; Korea logistics platform,NO,provisional second no-new round
+S04,2026-08-25,Simplified Chinese;Traditional Chinese;English,China MSA AIS accident reports; Taiwan NODASS AIS; Southeast Asian and Five Eyes official monitoring,web,China MSA; Taiwan NODASS,YES,new official evidence/catalog families; saturation counter reset
+S05,2026-08-25,Indonesian;English,Vietnam Malaysia Indonesia Australia New Zealand Chinese vessel official tracking data,web,Bakamla; IOJI; WCPFC registry,YES,new official regional and RFMO identity families; counter reset
+S06,2026-08-25,English,Chinese fishing vessel public registry MMSI WCPFC IOTC SPRFMO,web,WCPFC; IOTC; SPRFMO; known cruise archives,YES,RFMO identity/aggregate family completed; counter reset
+S07,2026-08-25,English,named Xiang Yang Hong Yuan Wang CCG militia downloadable track dataset,web,known commercial viewers; AMTI; IOJI references,NO,first consecutive no-new high-value provider round
+S08,2026-08-25,Simplified Chinese;Traditional Chinese;Japanese;Korean,Chinese vessel track open data 2025 multilingual final sweep,web,Ships66/ChinaPorts commercial; known JCG/JIIA/GFW,NO,second consecutive no-new high-value provider round; census saturated
