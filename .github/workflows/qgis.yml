@@ -47,7 +47,7 @@ jobs:
           -v "$PWD:/workspace"
           -w /workspace
           mgrb-qgis-test:current
-          bash -lc 'python3 scripts/make_maritime_fixture.py && python3 scripts/build_maritime_qgis.py --spec outputs/maritime-fixture/ci-synthetic-maritime-workspace/metadata/research-spec.json && test -s outputs/maritime-fixture/ci-synthetic-maritime-workspace/project/MGRB_taiwan_east.qgz && test -s outputs/maritime-fixture/ci-synthetic-maritime-workspace/exports/paper_map.pdf && test -s outputs/maritime-fixture/ci-synthetic-maritime-workspace/exports/paper_map.png && test -s outputs/maritime-fixture/ci-synthetic-maritime-workspace/exports/paper_map.svg && test -s outputs/maritime-fixture/ci-synthetic-maritime-workspace/exports/media_map.png && test -s outputs/maritime-fixture/ci-synthetic-maritime-workspace/metadata/qgis-validation.json'
+          bash -lc 'python3 scripts/make_maritime_fixture.py && python3 scripts/build_maritime_qgis.py --spec outputs/maritime-fixture/ci-synthetic-maritime-workspace/metadata/research-spec.json && test -s outputs/maritime-fixture/ci-synthetic-maritime-workspace/project/MGRB_taiwan_east.qgz && test -s outputs/maritime-fixture/ci-synthetic-maritime-workspace/exports/paper_map.pdf && test -s outputs/maritime-fixture/ci-synthetic-maritime-workspace/exports/paper_map.png && test -s outputs/maritime-fixture/ci-synthetic-maritime-workspace/exports/paper_map.svg && test -s outputs/maritime-fixture/ci-synthetic-maritime-workspace/exports/media_map.png && python3 scripts/check_maritime_validation.py outputs/maritime-fixture/ci-synthetic-maritime-workspace/metadata/qgis-validation.json'
       - name: Canonical public-data owner-review build
         run: >-
           docker run --rm

@@ -24,7 +24,7 @@
     "IMO": {"type": ["string", "null"]},
     "MMSI": {"type": ["string", "null"]},
     "source_type": {
-      "enum": ["AIS", "OFFICIAL_OBSERVATION", "SAR_DETECTION", "OPTICAL_DETECTION", "VIIRS_BOAT_DETECTION", "PORT_RECORD", "USER_SUPPLIED", "LICENSED_EXTERNAL"]
+      "enum": ["AIS", "PUBLIC_TRACK", "OFFICIAL_OBSERVATION", "SAR_DETECTION", "OPTICAL_DETECTION", "VIIRS_BOAT_DETECTION", "PORT_RECORD", "USER_SUPPLIED", "LICENSED_EXTERNAL"]
     },
     "source_name": {"type": "string"},
     "source_record_id": {"type": "string"},

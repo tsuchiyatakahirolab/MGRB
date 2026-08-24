@@ -58,7 +58,7 @@ from qgis.core import (  # type: ignore
 from qgis.PyQt.QtCore import Qt  # type: ignore
 from qgis.PyQt.QtGui import QColor, QFont, QImage, QPainter  # type: ignore
 
-from mgrb.cartography import layout_qa
+from mgrb.cartography import layout_qa, select_scale_interval_km
 from mgrb.qgis_font import FONT_FAMILY, glyph_fingerprint, register_bundled_fonts
 from mgrb.render_qa import detect_tofu_blocks
 from mgrb.verification import verify_generated_file, write_artifact_sidecar, write_sha256sums
@@ -437,6 +437,9 @@ def _build_layout(
     crs: QgsCoordinateReferenceSystem,
     source_names: list[str],
     legend_layers: list,
+    *,
+    legend_sections: list[tuple[str, list[tuple[object, str]]]] | None = None,
+    map_layers: list | None = None,
 ) -> QgsPrintLayout:
     profile = spec["cartographic_profile"]
     layout_cfg = spec["layout"]
@@ -458,7 +461,7 @@ def _build_layout(
     project.layoutManager().addLayout(layout)
 
     title = QgsLayoutItemLabel(layout)
-    title.setText(spec["region"]["purpose"])
+    title.setText(spec.get("layout_title") or spec["region"]["purpose"])
     title.setTextFormat(
         _layout_text_format(
             _font(FONT_FAMILY, int(layout_cfg["title_pt"]), bold=True),
@@ -470,11 +473,33 @@ def _build_layout(
     title.setZValue(100)
     layout.addLayoutItem(title)
 
+    subtitle_text = str(spec.get("layout_subtitle") or "").strip()
+    if subtitle_text:
+        subtitle = QgsLayoutItemLabel(layout)
+        subtitle.setText(subtitle_text)
+        subtitle.setTextFormat(
+            _layout_text_format(
+                _font(FONT_FAMILY, int(layout_cfg.get("subtitle_pt", 7))),
+                _color(theme, "layout.footer"),
+            )
+        )
+        subtitle.attemptMove(
+            QgsLayoutPoint(map_x, 7.0, QgsUnitTypes.LayoutMillimeters)
+        )
+        subtitle.attemptResize(
+            QgsLayoutSize(map_width, 6, QgsUnitTypes.LayoutMillimeters)
+        )
+        subtitle.setZValue(100)
+        layout.addLayoutItem(subtitle)
+
     map_item = QgsLayoutItemMap(layout)
     layout.addLayoutItem(map_item)
     map_item.attemptMove(QgsLayoutPoint(map_x, map_y, QgsUnitTypes.LayoutMillimeters))
     map_item.attemptResize(QgsLayoutSize(map_width, map_height, QgsUnitTypes.LayoutMillimeters))
     map_item.setCrs(crs)
+    if map_layers is not None:
+        map_item.setLayers(map_layers)
+        map_item.setKeepLayerSet(True)
     map_item.zoomToExtent(extent)
     map_item.setBackgroundEnabled(True)
     map_item.setBackgroundColor(QColor(_color(theme, "bathymetry.shelf")))
@@ -519,21 +544,35 @@ def _build_layout(
     legend.setTitle(spec.get("legend_title", "Public base"))
     legend.setAutoUpdateModel(False)
     legend.model().rootGroup().clear()
-    legend_labels = spec.get("legend_labels", [])
-    for index, layer in enumerate(legend_layers):
-        if layer is not None:
-            node = legend.model().rootGroup().addLayer(layer)
-            if index < len(legend_labels) and legend_labels[index]:
-                node.setCustomProperty("legend/title-label", legend_labels[index])
-                legend.model().refreshLayerLegend(node)
-                for legend_node in legend.model().layerLegendNodes(node):
-                    legend_node.setUserLabel(legend_labels[index])
+    def add_legend_entry(parent, layer, label: str) -> None:
+        node = parent.addLayer(layer)
+        if label:
+            node.setCustomProperty("legend/title-label", label)
+            legend.model().refreshLayerLegend(node)
+            for legend_node in legend.model().layerLegendNodes(node):
+                legend_node.setUserLabel(label)
+
+    if legend_sections:
+        for section_title, entries in legend_sections:
+            section = legend.model().rootGroup().addGroup(section_title)
+            for layer, label in entries:
+                if layer is not None:
+                    add_legend_entry(section, layer, label)
+    else:
+        legend_labels = spec.get("legend_labels", [])
+        for index, layer in enumerate(legend_layers):
+            if layer is not None:
+                label = legend_labels[index] if index < len(legend_labels) else ""
+                add_legend_entry(legend.model().rootGroup(), layer, label)
     legend.setLegendFilterByMapEnabled(False)
     legend.setResizeToContents(False)
     legend.rstyle(QgsLegendStyle.Title).setTextFormat(
         QgsTextFormat.fromQFont(_font(FONT_FAMILY, 6, bold=True))
     )
     legend.rstyle(QgsLegendStyle.Subgroup).setTextFormat(
+        QgsTextFormat.fromQFont(_font(FONT_FAMILY, 5, bold=True))
+    )
+    legend.rstyle(QgsLegendStyle.Group).setTextFormat(
         QgsTextFormat.fromQFont(_font(FONT_FAMILY, 5, bold=True))
     )
     legend.rstyle(QgsLegendStyle.SymbolLabel).setTextFormat(
@@ -563,11 +602,16 @@ def _build_layout(
 
     if profile["scale_bar"]:
         scale_bar = QgsLayoutItemScaleBar(layout)
+        scale_bar.setId("MGRB Scale Bar")
         scale_bar.setStyle("Single Box")
+        scale_bar.setLinkedMap(map_item)
+        scale_bar.applyDefaultSize()
         scale_bar.setUnits(QgsUnitTypes.DistanceKilometers)
         scale_bar.setUnitLabel("km")
-        scale_bar.setLinkedMap(map_item)
-        scale_bar.setNumberOfSegments(3)
+        scale_bar.setUnitsPerSegment(
+            select_scale_interval_km(map_item.extent().width() / 1000.0)
+        )
+        scale_bar.setNumberOfSegments(2)
         scale_bar.setNumberOfSegmentsLeft(0)
         if hasattr(scale_bar, "setTextFormat"):
             scale_bar.setTextFormat(
@@ -576,7 +620,6 @@ def _build_layout(
         scale_bar.attemptMove(
             QgsLayoutPoint(map_x + 5, map_y + map_height - 10, QgsUnitTypes.LayoutMillimeters)
         )
-        scale_bar.applyDefaultSize()
         layout.addLayoutItem(scale_bar)
 
     if build.get("visible_footer", True):

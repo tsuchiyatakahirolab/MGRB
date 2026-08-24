@@ -21,6 +21,20 @@ def select_orientation(bbox: tuple[float, float, float, float]) -> str:
     return "square"
 
 
+def select_scale_interval_km(map_width_km: float) -> float:
+    """Select a rounded segment interval for a compact two-segment kilometre bar."""
+    if not math.isfinite(map_width_km) or map_width_km <= 0:
+        raise ValueError("Map width must be a positive finite distance")
+    target = map_width_km / 14.0
+    exponent = math.floor(math.log10(target))
+    candidates = [
+        multiplier * 10**power
+        for power in range(exponent - 1, exponent + 2)
+        for multiplier in (1.0, 2.0, 2.5, 5.0)
+    ]
+    return min(candidates, key=lambda value: (abs(value - target), value))
+
+
 def resolve_layout_geometry(
     bbox: tuple[float, float, float, float], layout: dict[str, Any]
 ) -> dict[str, Any]:
@@ -80,6 +94,17 @@ def buffered_vector_bbox(
     """Buffer vector context and avoid clipped edges in projected map frames."""
     if longitude_convention == "360" and bbox[2] - bbox[0] >= 180.0:
         return (0.0, -89.0, 360.0, 89.0)
+    if longitude_convention == "360" and profile == "regional" and bbox[1] >= 60.0:
+        # A tall polar LAEA frame legitimately sees a much wider longitude arc
+        # near its upper edge. Cover that curved frame on both sides of the
+        # antimeridian instead of exposing a rectangular processing subset.
+        xmin, ymin, xmax, ymax = bbox
+        return (
+            max(0.0, xmin - 44.0),
+            max(-89.0, ymin - max((ymax - ymin) * 0.30, 3.0)),
+            min(360.0, xmax + 44.0),
+            min(89.0, ymax + max((ymax - ymin) * 0.30, 3.0)),
+        )
     fractions = {"local": 0.22, "regional": 0.30, "theatre": 0.15}
     minimums = {"local": 1.5, "regional": 3.0, "theatre": 8.0}
     fraction = fractions.get(profile, 0.18)

@@ -1,6 +1,30 @@
 schema_version: "0.1"
 registry_name: "MGRB China vessel/entity registry"
 records:
+  - entity_id: research-xue-long
+    canonical_name: "Xue Long"
+    name_cn: "雪龙"
+    name_en: "Xue Long"
+    aliases: ["Xuelong", "Snow Dragon", "76XL20120717"]
+    former_names: []
+    actor_type: RESEARCH_SURVEY
+    vessel_class: "polar research vessel"
+    hull_number: null
+    IMO: "8877899"
+    MMSI: null
+    callsign: null
+    operator: "Polar Research Institute of China"
+    home_port: null
+    length_m: null
+    tonnage: null
+    known_role: "polar scientific research"
+    first_seen: "2012-07-17"
+    last_seen: "2012-09-08"
+    identity_confidence: DOCUMENTED
+    source_count: 1
+    primary_source: "PANGAEA dataset 10.1594/PANGAEA.891818"
+    source_refs: ["https://doi.org/10.1594/PANGAEA.891818"]
+    notes: "The R2 demonstration uses the published underway cruise track; it is not AIS and carries the provider's cruise QC flag D."
   - entity_id: plan-jiangkai2-533
     canonical_name: "PLAN frigate 533"
     name_cn: null

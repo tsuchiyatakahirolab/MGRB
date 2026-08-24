@@ -15,8 +15,12 @@ import pyogrio
 import rasterio
 
 from . import __version__
-from .adapters import MarineRegionsWFSAdapter, WorldBankTrafficDensityAdapter
-from .cartography import buffered_vector_bbox, resolve_layout_geometry
+from .adapters import (
+    MarineRegionsWFSAdapter,
+    PangaeaXueLong2012Adapter,
+    WorldBankTrafficDensityAdapter,
+)
+from .cartography import buffered_bbox, buffered_vector_bbox, resolve_layout_geometry
 from .config import Region, load_profiles, load_regions, load_yaml
 from .evidence import QualityControlConfig, normalize_evidence, quality_control, read_evidence
 from .provenance import git_commit, sha256
@@ -49,7 +53,7 @@ class ResearchBuildRequest:
     local_inputs: tuple[Path, ...] = ()
     live_sources: bool = True
     traffic_density: Path | None = None
-    base_build_id: str = "taiwan-local-canonical"
+    base_build_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -125,8 +129,14 @@ def _embed_gpkg_metadata(path: Path, payload: dict) -> None:
         )
 
 
-def _copy_base_data(root: Path, request: ResearchBuildRequest, package_data: Path) -> dict:
-    source = root / "data" / "derived" / request.base_build_id
+def _copy_base_data(
+    root: Path,
+    request: ResearchBuildRequest,
+    region: Region,
+    package_data: Path,
+) -> dict:
+    base_build_id = request.base_build_id or region.base_build_id or "taiwan-local-canonical"
+    source = root / "data" / "derived" / base_build_id
     if not (source / "base.gpkg").exists() or not (source / "bathymetry.tif").exists():
         raise FileNotFoundError(
             f"Cached public base build is missing: {source}. Run the public cartography "
@@ -136,6 +146,31 @@ def _copy_base_data(root: Path, request: ResearchBuildRequest, package_data: Pat
     shutil.copy2(source / "bathymetry.tif", package_data / "bathymetry.tif")
     spec = json.loads((source / "project-spec.json").read_text(encoding="utf-8"))
     return spec
+
+
+def _filter_observations(
+    normalized: gpd.GeoDataFrame,
+    request: ResearchBuildRequest,
+    region: Region,
+) -> gpd.GeoDataFrame:
+    timestamps = pd.to_datetime(normalized["timestamp_start"], errors="coerce", utc=True)
+    if request.start_date:
+        normalized = normalized[timestamps.dt.date >= request.start_date]
+        timestamps = timestamps.loc[normalized.index]
+    if request.end_date:
+        normalized = normalized[timestamps.dt.date <= request.end_date]
+    xmin, ymin, xmax, ymax = region.bbox
+    longitudes = normalized["longitude"]
+    if region.longitude_convention == "360":
+        longitudes = longitudes.mod(360.0)
+    normalized = normalized[
+        longitudes.between(xmin, xmax)
+        & normalized["latitude"].between(ymin, ymax)
+    ]
+    actors = normalize_actor_names(request.actors or region.default_actors)
+    if actors:
+        normalized = normalized[normalized["actor_type"].isin(actors)]
+    return normalized.copy()
 
 
 def _public_observations(
@@ -156,21 +191,37 @@ def _public_observations(
         attribution="See source_url and source_name for every observation",
         raw_reference="metadata/public-observations-v0.1.csv",
     )
-    timestamps = pd.to_datetime(normalized["timestamp_start"], errors="coerce", utc=True)
-    if request.start_date:
-        normalized = normalized[timestamps.dt.date >= request.start_date]
-        timestamps = timestamps.loc[normalized.index]
-    if request.end_date:
-        normalized = normalized[timestamps.dt.date <= request.end_date]
-    xmin, ymin, xmax, ymax = region.bbox
-    normalized = normalized[
-        normalized["longitude"].between(xmin, xmax)
-        & normalized["latitude"].between(ymin, ymax)
-    ]
-    actors = normalize_actor_names(request.actors or region.default_actors)
-    if actors:
-        normalized = normalized[normalized["actor_type"].isin(actors)]
-    return normalized.copy()
+    return _filter_observations(normalized, request, region)
+
+
+def _orientation_labels(region: Region) -> gpd.GeoDataFrame:
+    records = []
+    for index, label in enumerate(region.orientation_labels):
+        records.append(
+            {
+                "label_id": f"{region.name}-orientation-{index + 1}",
+                "name": str(label["name"]),
+                "label_role": str(label.get("role", "place")),
+                "paper_visible": int(bool(label.get("paper", True))),
+                "media_visible": int(bool(label.get("media", True))),
+                "geometry": gpd.points_from_xy(
+                    [float(label["longitude"])], [float(label["latitude"])]
+                )[0],
+            }
+        )
+    if not records:
+        return gpd.GeoDataFrame(
+            {
+                "label_id": pd.Series(dtype="str"),
+                "name": pd.Series(dtype="str"),
+                "label_role": pd.Series(dtype="str"),
+                "paper_visible": pd.Series(dtype="int"),
+                "media_visible": pd.Series(dtype="int"),
+            },
+            geometry=gpd.GeoSeries([], dtype="geometry", crs=4326),
+            crs=4326,
+        )
+    return gpd.GeoDataFrame(records, geometry="geometry", crs=4326)
 
 
 def _empty_events() -> gpd.GeoDataFrame:
@@ -251,12 +302,64 @@ def prepare_research_package(
         directory.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    base_spec = _copy_base_data(root, request, directories["data"])
+    base_spec = _copy_base_data(root, request, region, directories["data"])
     registry = VesselRegistry.load(
         root / "metadata" / "vessels-v0.1.yml",
         root / "schema" / "vessel_registry.schema.json",
     )
     observations = _public_observations(root, registry, request, region)
+    public_track_records: list[dict] = []
+    for source_id in region.public_evidence_sources:
+        if source_id != PangaeaXueLong2012Adapter.source_id:
+            raise ValueError(f"Unsupported preset public evidence source: {source_id}")
+        if not request.public_data or not request.live_sources:
+            continue
+        adapter = PangaeaXueLong2012Adapter()
+        cache = adapter.acquire(root / "data" / "raw" / "r2-public")
+        loaded = adapter.read(cache)
+        normalized_track = normalize_evidence(
+            loaded,
+            registry,
+            build_id=request.build_id,
+            source_type="PUBLIC_TRACK",
+            source_name="PANGAEA 891818 Xue Long cruise 76XL20120717",
+            license_text="CC BY 3.0",
+            attribution=(
+                "Chen, Cai & Ouyang (2018), PANGAEA, "
+                "doi:10.1594/PANGAEA.891818"
+            ),
+            raw_reference=adapter.download_url,
+        )
+        normalized_track = _filter_observations(normalized_track, request, region)
+        observations = pd.concat([observations, normalized_track], ignore_index=True)
+        observations = gpd.GeoDataFrame(observations, geometry="geometry", crs=4326)
+        public_track_records.append(
+            {
+                "source_id": source_id,
+                "provider": "PANGAEA / Third Institute of Oceanography, SOA",
+                "dataset": "Xue Long cruise 76XL20120717 underway track",
+                "version_or_date": "2018-07-02 publication",
+                "original_url": adapter.dataset_url,
+                "download_timestamp_utc": timestamp,
+                "license": "CC BY 3.0",
+                "allowed_use": "research, publication, and redistribution with attribution",
+                "attribution_required": True,
+                "redistribution_allowed": True,
+                "commercial_use_known": True,
+                "spatial_resolution": "3,186 published underway position records",
+                "temporal_coverage": "2012-07-17 through 2012-09-08",
+                "source_sha256": sha256(cache),
+                "availability": "AVAILABLE",
+                "transformations": [
+                    "parse PANGAEA tab-delimited dataset",
+                    "canonical evidence normalization",
+                    "clip to preset area and period",
+                    "deterministic track QC and segmentation",
+                ],
+                "normalized_position_count": len(normalized_track),
+                "quality_caveat": "Provider cruise QC flag D",
+            }
+        )
     local_source_records: list[dict] = []
     for local_input in request.local_inputs:
         local = read_evidence(
@@ -293,11 +396,13 @@ def prepare_research_package(
     observations_path = directories["data"] / "observations.gpkg"
     tracks_path = directories["data"] / "tracks.gpkg"
     events_path = directories["data"] / "events.gpkg"
+    context_path = directories["data"] / "context.gpkg"
     vessels_path = directories["data"] / "vessels.gpkg"
     maritime_path = directories["data"] / "maritime.gpkg"
     _write_geodataframe(qc.cleaned_points, observations_path, "observations")
     _write_geodataframe(qc.track_segments, tracks_path, "track_segments")
     _write_geodataframe(_empty_events(), events_path, "events")
+    _write_geodataframe(_orientation_labels(region), context_path, "orientation_labels")
 
     entity_ids = set(qc.cleaned_points["entity_id"].dropna().astype(str))
     registry_records = registry.subset(entity_ids)
@@ -308,11 +413,28 @@ def prepare_research_package(
     _write_nonspatial(registry_frame, vessels_path, "vessel_registry")
 
     source_warnings: list[str] = []
+    if region.public_evidence_sources and (not request.public_data or not request.live_sources):
+        source_warnings.append(
+            "Preset public track unavailable: offline/public-data-disabled mode"
+        )
     marine_records: list[dict] = []
     if request.public_data and request.live_sources:
         adapter = marine_adapter or MarineRegionsWFSAdapter()
+        marine_bbox = buffered_vector_bbox(
+            region.bbox, region.longitude_convention, region.profile
+        )
+        if region.longitude_convention == "360" and marine_bbox[2] > 180.0:
+            # Marine Regions WFS accepts canonical WGS84 longitudes. The tiny
+            # 179..180 continuation is supplied by the portable public base;
+            # request the contiguous western-hemisphere portion here.
+            marine_bbox = (
+                max(-180.0, marine_bbox[0] - 360.0),
+                marine_bbox[1],
+                marine_bbox[2] - 360.0,
+                marine_bbox[3],
+            )
         marine_layers, marine_records = adapter.fetch(
-            buffered_vector_bbox(region.bbox, region.longitude_convention, region.profile),
+            marine_bbox,
             root / "data" / "raw" / "marine_regions" / request.area,
         )
     else:
@@ -339,9 +461,17 @@ def prepare_research_package(
         _write_geodataframe(frame, maritime_path, layer_name)
 
     traffic_available = False
+    traffic_details: dict[str, object] = {}
     if request.traffic_density:
-        traffic_source = WorldBankTrafficDensityAdapter().require_cache(request.traffic_density)
-        shutil.copy2(traffic_source, directories["data"] / "normal-traffic-density.tif")
+        traffic_window = buffered_bbox(
+            region.bbox, region.longitude_convention, region.profile
+        )
+        traffic_details = WorldBankTrafficDensityAdapter().subset(
+            request.traffic_density,
+            traffic_window,
+            directories["data"] / "normal-traffic-density.tif",
+            buffer_degrees=1.0,
+        )
         traffic_available = True
     else:
         source_warnings.append(
@@ -392,18 +522,25 @@ def prepare_research_package(
         record["normalized_fixture_sha256"] = seed_hash
         source_records.append(record)
     source_records.extend(marine_records)
+    source_records.extend(public_track_records)
     source_records.extend(local_source_records)
     traffic_record = source_registry.get("world_bank_shipping_density_2021").manifest_record(
         ["normal_traffic_density"],
         ["clip to research area"] if traffic_available else [],
         downloaded_at_utc=timestamp if traffic_available else None,
-        source_hash=(
-            sha256(directories["data"] / "normal-traffic-density.tif")
-            if traffic_available
-            else None
-        ),
+        source_hash=str(traffic_details.get("source_sha256")) if traffic_available else None,
         availability="AVAILABLE" if traffic_available else "NOT_CACHED_LARGE_SOURCE",
     )
+    if traffic_available:
+        traffic_record.update(
+            {
+                "provider_download_url": WorldBankTrafficDensityAdapter.download_url,
+                "source_archive_bytes": request.traffic_density.stat().st_size,
+                "subset_sha256": traffic_details["subset_sha256"],
+                "subset_bbox": traffic_details["subset_bbox"],
+                "density_transform": traffic_details["transform"],
+            }
+        )
     source_records.append(traffic_record)
 
     source_manifest = {
@@ -500,6 +637,8 @@ def prepare_research_package(
                     ["actor_type", "segment_type"]
                 ).size().items()
             },
+            "evidence_methods": qc.cleaned_points["observation_method"].value_counts().to_dict(),
+            "inferred_entity_integrity": True,
         },
         "restricted_raw_data_included": False,
         "source_warnings": source_warnings,
@@ -533,7 +672,7 @@ def prepare_research_package(
             "normalize source-backed vessel observations",
             "resolve vessel identities without behavioral attribution",
             "run deterministic position/time/identity quality control",
-            "segment dense AIS only as observed tracks",
+            "segment dense AIS or documented public cruise tracks only as observed tracks",
             "represent sparse official-observation links only as inferred connections",
             "organize portable QGIS research package",
         ],
@@ -586,6 +725,7 @@ def prepare_research_package(
             "observations_gpkg": "data/observations.gpkg",
             "tracks_gpkg": "data/tracks.gpkg",
             "events_gpkg": "data/events.gpkg",
+            "context_gpkg": "data/context.gpkg",
             "bathymetry": "data/bathymetry.tif",
             "traffic_density": (
                 "data/normal-traffic-density.tif" if traffic_available else None
@@ -614,6 +754,7 @@ def prepare_research_package(
         observations_path,
         tracks_path,
         events_path,
+        context_path,
     ):
         _embed_gpkg_metadata(gpkg, metadata_payload)
     with rasterio.open(directories["data"] / "bathymetry.tif", "r+") as dataset:
@@ -624,6 +765,14 @@ def prepare_research_package(
             MGRB_SOURCE_MANIFEST_SHA256=build_manifest["source_manifest_sha256"],
             MGRB_RECOMMENDED_CITATION=build_manifest["recommended_citation"],
         )
+    if traffic_available:
+        with rasterio.open(directories["data"] / "normal-traffic-density.tif", "r+") as dataset:
+            dataset.update_tags(
+                MGRB_VERSION=__version__,
+                MGRB_BUILD_ID=request.build_id,
+                MGRB_GIT_COMMIT=commit or "unknown",
+                MGRB_SOURCE_MANIFEST_SHA256=build_manifest["source_manifest_sha256"],
+            )
     return PreparedResearchPackage(
         request.build_id,
         package_dir,

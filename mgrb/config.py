@@ -22,6 +22,11 @@ class Region:
     base_region: str | None = None
     title: str = ""
     default_actors: tuple[str, ...] = ()
+    base_build_id: str | None = None
+    public_evidence_sources: tuple[str, ...] = ()
+    orientation_labels: tuple[dict[str, Any], ...] = ()
+    media_title: str = ""
+    media_subtitle: str = ""
 
 
 @dataclass(frozen=True)
@@ -78,6 +83,15 @@ def load_regions(path: Path) -> dict[str, Region]:
             base_region=str(cfg["base_region"]) if cfg.get("base_region") else None,
             title=str(cfg.get("title", cfg.get("purpose", name))),
             default_actors=tuple(str(value).upper() for value in cfg.get("default_actors", ())),
+            base_build_id=str(cfg["base_build_id"]) if cfg.get("base_build_id") else None,
+            public_evidence_sources=tuple(
+                str(value) for value in cfg.get("public_evidence_sources", ())
+            ),
+            orientation_labels=tuple(
+                dict(value) for value in cfg.get("orientation_labels", ())
+            ),
+            media_title=str(cfg.get("media_title", "")),
+            media_subtitle=str(cfg.get("media_subtitle", "")),
         )
     return out
 

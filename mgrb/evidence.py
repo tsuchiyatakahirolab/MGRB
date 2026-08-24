@@ -17,6 +17,7 @@ from .vessels import VesselRegistry, identifier_is_malformed
 
 EVIDENCE_TYPES = {
     "AIS",
+    "PUBLIC_TRACK",
     "OFFICIAL_OBSERVATION",
     "SAR_DETECTION",
     "OPTICAL_DETECTION",
@@ -69,6 +70,10 @@ CANONICAL_COLUMNS = (
 SEGMENT_COLUMNS = (
     "segment_id",
     "entity_id",
+    "start_observation_id",
+    "end_observation_id",
+    "start_entity_id",
+    "end_entity_id",
     "actor_type",
     "start_time",
     "end_time",
@@ -88,6 +93,7 @@ DEFAULT_ALIASES = {
     "hull_number": ("hull_number", "hull", "pennant"),
 }
 GEOD = Geod(ellps="WGS84")
+DENSE_OBSERVED_SOURCE_TYPES = {"AIS", "PUBLIC_TRACK"}
 
 
 @dataclass(frozen=True)
@@ -372,6 +378,7 @@ def quality_control(
     excluded = frame.loc[sorted(excluded_indices)].copy() if excluded_indices else frame.iloc[0:0].copy()
     cleaned = frame.drop(index=excluded_indices).copy()
     segments = _build_segments(cleaned, config)
+    validate_segment_entity_integrity(segments)
     flags_frame = pd.DataFrame(
         flags,
         columns=["observation_id", "entity_id", "flag", "severity", "detail", "excluded"],
@@ -411,7 +418,7 @@ def _build_segments(
     ).groupby("entity_id"):
         ordered = group.sort_values("_time")
         source_types = set(ordered["source_type"].astype(str))
-        if source_types == {"AIS"}:
+        if source_types and source_types <= DENSE_OBSERVED_SOURCE_TYPES:
             run: list[pd.Series] = []
             for _, row in ordered.iterrows():
                 if not run:
@@ -464,6 +471,13 @@ def _segment_record(
 ) -> dict[str, object]:
     if segment_type not in SEGMENT_TYPES:
         raise ValueError(segment_type)
+    entity = str(entity_id or "").strip()
+    row_entities = {str(row.get("entity_id") or "").strip() for row in rows}
+    if not entity or row_entities != {entity}:
+        raise ValueError(
+            "Track segments require one documented entity; cross-entity or unidentified "
+            f"endpoints are invalid: segment={entity!r}, rows={sorted(row_entities)!r}"
+        )
     times = [row["_time"] for row in rows]
     gaps = [
         (current - previous).total_seconds()
@@ -473,7 +487,11 @@ def _segment_record(
     digest = hashlib.sha256("|".join(observation_ids).encode("utf-8")).hexdigest()[:16]
     return {
         "segment_id": f"seg-{digest}",
-        "entity_id": entity_id,
+        "entity_id": entity,
+        "start_observation_id": observation_ids[0],
+        "end_observation_id": observation_ids[-1],
+        "start_entity_id": entity,
+        "end_entity_id": entity,
         "actor_type": rows[0]["actor_type"],
         "start_time": times[0].isoformat(),
         "end_time": times[-1].isoformat(),
@@ -486,3 +504,24 @@ def _segment_record(
             [(float(row["longitude"]), float(row["latitude"])) for row in rows]
         ),
     }
+
+
+def validate_segment_entity_integrity(segments: pd.DataFrame) -> None:
+    """Reject every inferred/observed segment whose endpoint identities diverge."""
+    if segments.empty:
+        return
+    required = {"entity_id", "start_entity_id", "end_entity_id", "segment_type"}
+    missing = required - set(segments.columns)
+    if missing:
+        raise ValueError(f"Track segments lack endpoint identity fields: {sorted(missing)}")
+    for _, row in segments.iterrows():
+        identities = {
+            str(row.get("entity_id") or "").strip(),
+            str(row.get("start_entity_id") or "").strip(),
+            str(row.get("end_entity_id") or "").strip(),
+        }
+        if "" in identities or len(identities) != 1:
+            raise ValueError(
+                "Cross-entity or unidentified track segment rejected: "
+                f"{row.get('segment_id', '<unknown>')} {sorted(identities)!r}"
+            )

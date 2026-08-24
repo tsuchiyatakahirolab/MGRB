@@ -112,6 +112,20 @@ sources:
     commercial_use_known: true
     spatial_resolution: "0.005 degree grid"
     temporal_coverage: "AIS positions aggregated from 2015-01 through 2021-02"
+  pangaea_xue_long_2012:
+    title: "Underway physical oceanography and carbon dioxide measurements during Xue Long cruise 76XL20120717"
+    provider: "PANGAEA / Third Institute of Oceanography, State Oceanic Administration"
+    version: "2018-07-02 publication"
+    homepage: "https://doi.org/10.1594/PANGAEA.891818"
+    licence: "CC BY 3.0"
+    acquisition: "PANGAEA tab-delimited dataset endpoint; production adapter preserves the DOI, source checksum, and cruise QC flag."
+    role: "public_research_vessel_track"
+    allowed_use: "research, publication, redistribution, and commercial use with attribution under CC BY 3.0"
+    attribution_required: true
+    redistribution_allowed: true
+    commercial_use_known: true
+    spatial_resolution: "3,186 underway geocoded position records (47,790 tabular data values across measured variables)"
+    temporal_coverage: "2012-07-17T17:38:49 through 2012-09-08T18:12:31"
   japan_joint_staff_public_observations:
     title: "Chinese naval vessel movement press releases"
     provider: "Japan Ministry of Defense, Joint Staff"

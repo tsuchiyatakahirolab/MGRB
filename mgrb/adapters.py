@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import io
+import json
+import shutil
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -8,8 +12,17 @@ from pathlib import Path
 from typing import ClassVar
 
 import geopandas as gpd
+import numpy as np
+import pandas as pd
+import rasterio
+from rasterio.enums import Resampling
+from rasterio.io import MemoryFile
+from rasterio.merge import merge
+from rasterio.transform import Affine
+from rasterio.windows import Window, from_bounds
 from shapely.geometry import box
 
+from .longitude import bbox_360_to_180_parts
 from .provenance import sha256
 
 
@@ -164,6 +177,38 @@ class WorldBankTrafficDensityAdapter:
         "https://datacatalog.worldbank.org/search/dataset/0037580/"
         "global-shipping-traffic-density"
     )
+    download_url = (
+        "https://datacatalogfiles.worldbank.org/ddh-published/0037580/5/"
+        "DR0045406/shipdensity_global.zip"
+    )
+    archive_member = "shipdensity_global.tif"
+    archive_sha256 = "7d103de52acf355ffc2436909d5d98e9db93f74d6ad237680e5da6d6d24a9248"
+
+    def acquire(self, cache_dir: Path, *, timeout: int = 900) -> Path:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        target = cache_dir / "shipdensity_global.zip"
+        if not target.exists() or target.stat().st_size == 0:
+            partial = target.with_suffix(".zip.part")
+            request = urllib.request.Request(
+                self.download_url, headers={"User-Agent": "MGRB/1.0 public-data-build"}
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=timeout) as response, partial.open(
+                    "wb"
+                ) as output:
+                    while chunk := response.read(1024 * 1024):
+                        output.write(chunk)
+                partial.replace(target)
+            except Exception as exc:
+                partial.unlink(missing_ok=True)
+                raise SourceUnavailable(f"World Bank traffic-density download failed: {exc}") from exc
+        actual = sha256(target)
+        if actual != self.archive_sha256:
+            raise SourceUnavailable(
+                "World Bank traffic-density archive checksum changed; provider update requires "
+                f"review (expected {self.archive_sha256}, got {actual})."
+            )
+        return target
 
     def require_cache(self, cache_path: Path | None) -> Path:
         if cache_path is None or not cache_path.exists():
@@ -173,3 +218,240 @@ class WorldBankTrafficDensityAdapter:
                 "GeoTIFF/archive explicitly; MGRB will not silently substitute another baseline."
             )
         return cache_path
+
+    def subset(
+        self,
+        cache_path: Path,
+        bbox: tuple[float, float, float, float],
+        output_path: Path,
+        *,
+        buffer_degrees: float = 0.75,
+        max_width: int = 4000,
+    ) -> dict[str, object]:
+        """Create a compact log-density GeoTIFF without expanding the 9.8 GB source."""
+        source = self.require_cache(cache_path).resolve()
+        source_hash = sha256(source)
+        if source.suffix.casefold() == ".zip":
+            raster_source = (
+                f"/vsizip/{source.as_posix()}/{self.archive_member}"
+            )
+        else:
+            raster_source = str(source)
+        xmin, ymin, xmax, ymax = bbox
+        convention_360 = xmax > 180.0
+        requested = (
+            max(0.0 if convention_360 else -180.0, xmin - buffer_degrees),
+            max(-85.0, ymin - buffer_degrees),
+            min(360.0 if convention_360 else 180.0, xmax + buffer_degrees),
+            min(85.0, ymax + buffer_degrees),
+        )
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_hit = False
+        subset_cache: Path | None = None
+        if source.suffix.casefold() == ".zip":
+            cache_key = hashlib.sha256(
+                json.dumps(
+                    {
+                        "source_sha256": source_hash,
+                        "requested": requested,
+                        "max_width": max_width,
+                        "transform": "log1p-v3-antimeridian-average-resample",
+                    },
+                    sort_keys=True,
+                ).encode("utf-8")
+            ).hexdigest()[:24]
+            subset_cache = source.parent / "subsets" / f"world-bank-{cache_key}.tif"
+            if subset_cache.exists() and subset_cache.stat().st_size:
+                shutil.copy2(subset_cache, output_path)
+                cache_hit = True
+        if cache_hit:
+            return {
+                "source_path": source,
+                "source_sha256": source_hash,
+                "subset_sha256": sha256(output_path),
+                "subset_bbox": list(requested),
+                "transform": "log1p",
+                "cache_hit": True,
+            }
+
+        parts = bbox_360_to_180_parts(requested) if convention_360 else [requested]
+        with rasterio.open(raster_source) as dataset:
+            memories: list[MemoryFile] = []
+            opened = []
+            try:
+                windows = []
+                for part in parts:
+                    window = from_bounds(*part, transform=dataset.transform)
+                    window = window.round_offsets().round_lengths().intersection(
+                        Window(0, 0, dataset.width, dataset.height)
+                    )
+                    windows.append((part, window))
+                total_width = sum(window.width for _, window in windows)
+                scale = max(1.0, total_width / max_width)
+                for part, window in windows:
+                    out_width = max(1, round(window.width / scale))
+                    out_height = max(1, round(window.height / scale))
+                    raw = dataset.read(
+                        1,
+                        window=window,
+                        out_shape=(out_height, out_width),
+                        resampling=Resampling.average,
+                    )
+                    valid = np.isfinite(raw)
+                    if dataset.nodata is not None:
+                        valid &= raw != dataset.nodata
+                    valid &= raw >= 0
+                    transformed_part = np.full(raw.shape, -9999.0, dtype="float32")
+                    transformed_part[valid] = np.log1p(
+                        raw[valid].astype("float64")
+                    ).astype("float32")
+                    transform = dataset.window_transform(window) * Affine.scale(
+                        window.width / out_width, window.height / out_height
+                    )
+                    if convention_360 and part[0] < 0:
+                        transform = Affine(
+                            transform.a,
+                            transform.b,
+                            transform.c + 360.0,
+                            transform.d,
+                            transform.e,
+                            transform.f,
+                        )
+                    profile = dataset.profile.copy()
+                    profile.update(
+                        driver="GTiff",
+                        count=1,
+                        dtype="float32",
+                        nodata=-9999.0,
+                        width=raw.shape[1],
+                        height=raw.shape[0],
+                        transform=transform,
+                    )
+                    memory = MemoryFile()
+                    memories.append(memory)
+                    part_dataset = memory.open(**profile)
+                    part_dataset.write(transformed_part, 1)
+                    opened.append(part_dataset)
+                if len(opened) == 1:
+                    transformed = opened[0].read(1)
+                    transform = opened[0].transform
+                else:
+                    mosaic, transform = merge(opened, nodata=-9999.0)
+                    transformed = mosaic[0]
+                profile = dataset.profile.copy()
+                profile.update(
+                    driver="GTiff",
+                    count=1,
+                    dtype="float32",
+                    nodata=-9999.0,
+                    width=transformed.shape[1],
+                    height=transformed.shape[0],
+                    transform=transform,
+                    compress="deflate",
+                    tiled=True,
+                    blockxsize=256,
+                    blockysize=256,
+                )
+                with rasterio.open(output_path, "w", **profile) as output:
+                    output.write(transformed, 1)
+                    finite = transformed[transformed != -9999.0]
+                    quantiles = np.quantile(finite, (0.5, 0.75, 0.9, 0.98)).tolist()
+                    output.update_tags(
+                        MGRB_SOURCE_ID="world_bank_shipping_density_2021",
+                        MGRB_SOURCE_URL=self.dataset_url,
+                        MGRB_SOURCE_ARCHIVE_SHA256=source_hash,
+                        MGRB_LONGITUDE_CONVENTION="0..360" if convention_360 else "-180..180",
+                        MGRB_TRANSFORM="log1p and bbox subset",
+                        MGRB_RESAMPLING=(
+                            f"average to maximum {max_width} pixels wide"
+                            if scale > 1.0
+                            else "native source resolution"
+                        ),
+                        MGRB_DENSITY_QUANTILES=",".join(
+                            f"{value:.6f}" for value in quantiles
+                        ),
+                    )
+            finally:
+                for part_dataset in opened:
+                    part_dataset.close()
+                for memory in memories:
+                    memory.close()
+        if subset_cache is not None:
+            subset_cache.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(output_path, subset_cache)
+        return {
+            "source_path": source,
+            "source_sha256": source_hash,
+            "subset_sha256": sha256(output_path),
+            "subset_bbox": list(requested),
+            "transform": "log1p",
+            "cache_hit": False,
+            "resampled_to_max_width": max_width,
+        }
+
+
+class PangaeaXueLong2012Adapter:
+    source_id = "pangaea_xue_long_2012"
+    dataset_url = "https://doi.org/10.1594/PANGAEA.891818"
+    download_url = dataset_url + "?format=textfile"
+    expected_sha256 = "590789494c690f63a769b6165e094204156d105d0925f99f539b1591448fa879"
+
+    def acquire(self, cache_dir: Path, *, timeout: int = 180) -> Path:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        target = cache_dir / "PANGAEA-891818.tsv"
+        if not target.exists() or target.stat().st_size == 0:
+            partial = target.with_suffix(".tsv.part")
+            request = urllib.request.Request(
+                self.download_url, headers={"User-Agent": "MGRB/1.0 public-data-build"}
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=timeout) as response:
+                    partial.write_bytes(response.read())
+                partial.replace(target)
+            except Exception as exc:
+                partial.unlink(missing_ok=True)
+                raise SourceUnavailable(f"PANGAEA Xue Long download failed: {exc}") from exc
+        actual = sha256(target)
+        if actual != self.expected_sha256:
+            raise SourceUnavailable(
+                "PANGAEA Xue Long source checksum changed; provider update requires review "
+                f"(expected {self.expected_sha256}, got {actual})."
+            )
+        return target
+
+    def read(self, cache_path: Path) -> pd.DataFrame:
+        path = self.acquire(cache_path.parent)
+        return self.parse(path)
+
+    def parse(self, path: Path) -> pd.DataFrame:
+        text = path.read_text(encoding="utf-8")
+        marker = "Date/Time\tLongitude\tLatitude\t"
+        offset = text.find(marker)
+        if offset < 0:
+            raise SourceUnavailable("PANGAEA Xue Long table header was not found")
+        frame = pd.read_csv(io.StringIO(text[offset:]), sep="\t")
+        frame = frame.rename(
+            columns={"Date/Time": "timestamp_start", "Longitude": "longitude", "Latitude": "latitude"}
+        )
+        frame["entity_id"] = "research-xue-long"
+        frame["vessel_name"] = "Xue Long"
+        frame["actor_type"] = "RESEARCH_SURVEY"
+        frame["source_type"] = "PUBLIC_TRACK"
+        frame["source_name"] = "PANGAEA 891818 Xue Long cruise 76XL20120717"
+        frame["source_record_id"] = [f"PANGAEA.891818:{index + 1}" for index in range(len(frame))]
+        frame["source_url"] = self.dataset_url
+        frame["observation_method"] = "UNDERWAY_CRUISE_TRACK"
+        frame["identity_confidence"] = "DOCUMENTED"
+        frame["position_confidence"] = "MEDIUM"
+        frame["observed_or_inferred"] = "OBSERVED"
+        frame["position_uncertainty_m"] = 1000.0
+        frame["temporal_uncertainty_s"] = 60.0
+        frame["license"] = "CC BY 3.0"
+        frame["attribution"] = (
+            "Chen, Cai & Ouyang (2018), PANGAEA, doi:10.1594/PANGAEA.891818"
+        )
+        frame["raw_record_reference"] = self.download_url
+        frame["processing_notes"] = (
+            "Published underway cruise-track position; provider cruise QC flag D retained as caveat"
+        )
+        return frame

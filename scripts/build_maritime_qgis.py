@@ -18,6 +18,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from qgis.core import (  # type: ignore
     Qgis,
     QgsApplication,
+    QgsColorRampShader,
     QgsCoordinateReferenceSystem,
     QgsExpressionContextUtils,
     QgsFillSymbol,
@@ -28,10 +29,14 @@ from qgis.core import (  # type: ignore
     QgsProject,
     QgsProjectMetadata,
     QgsRasterLayer,
+    QgsRasterShader,
     QgsRectangle,
+    QgsSimpleLineCallout,
+    QgsSingleBandPseudoColorRenderer,
     QgsSingleSymbolRenderer,
     QgsTextBufferSettings,
     QgsTextFormat,
+    QgsUnitTypes,
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
@@ -79,8 +84,8 @@ def _point_style(layer: QgsVectorLayer, color: str, *, uncertain: bool = False) 
         "name": "circle" if uncertain else "square",
         "color": "#ffffff" if uncertain else color,
         "outline_color": color,
-        "outline_width": "0.65" if uncertain else "0.25",
-        "size": "4.4" if uncertain else "3.1",
+        "outline_width": "0.42" if uncertain else "0.22",
+        "size": "3.0" if uncertain else "2.4",
     }
     layer.setRenderer(QgsSingleSymbolRenderer(QgsMarkerSymbol.createSimple(properties)))
 
@@ -97,18 +102,104 @@ def _label_points(layer: QgsVectorLayer, color: str) -> None:
     settings.isExpression = True
     settings.enabled = True
     settings.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
+    settings.dist = 2.2
+    settings.priority = 9
+    settings.obstacle = True
     text = QgsTextFormat()
     text.setFont(QFont(carto.FONT_FAMILY, 7))
     text.setSize(7)
     text.setColor(QColor(color))
     buffer = QgsTextBufferSettings()
     buffer.setEnabled(True)
-    buffer.setSize(0.8)
+    buffer.setSize(0.55)
+    buffer.setColor(QColor("#f7f5ef"))
+    text.setBuffer(buffer)
+    settings.setFormat(text)
+    callout = QgsSimpleLineCallout()
+    callout.setEnabled(True)
+    callout.setMinimumLength(1.5)
+    callout.setMinimumLengthUnit(QgsUnitTypes.RenderMillimeters)
+    callout.setLineSymbol(
+        QgsLineSymbol.createSimple(
+            {"line_color": color, "line_width": "0.18", "line_style": "solid"}
+        )
+    )
+    settings.setCallout(callout)
+    layer.setLabeling(QgsVectorLayerSimpleLabeling(settings))
+    layer.setLabelsEnabled(True)
+
+
+def _label_track(layer: QgsVectorLayer, color: str) -> None:
+    settings = QgsPalLayerSettings()
+    settings.fieldName = "'Xue Long - observed public cruise track'"
+    settings.isExpression = True
+    settings.enabled = True
+    settings.placement = QgsPalLayerSettings.Curved
+    settings.priority = 8
+    text = QgsTextFormat()
+    text.setFont(QFont(carto.FONT_FAMILY, 7))
+    text.setSize(7)
+    text.setColor(QColor(color))
+    buffer = QgsTextBufferSettings()
+    buffer.setEnabled(True)
+    buffer.setSize(0.5)
     buffer.setColor(QColor("#f7f5ef"))
     text.setBuffer(buffer)
     settings.setFormat(text)
     layer.setLabeling(QgsVectorLayerSimpleLabeling(settings))
     layer.setLabelsEnabled(True)
+
+
+def _style_orientation_labels(layer: QgsVectorLayer, *, media: bool) -> None:
+    symbol = QgsMarkerSymbol.createSimple(
+        {"name": "circle", "color": "transparent", "outline_style": "no", "size": "0"}
+    )
+    layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+    settings = QgsPalLayerSettings()
+    settings.fieldName = "name"
+    settings.enabled = True
+    settings.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
+    settings.priority = 4 if media else 2
+    text = QgsTextFormat()
+    text.setFont(QFont(carto.FONT_FAMILY, 11 if media else 7))
+    text.setSize(11 if media else 7)
+    text.setColor(QColor("#4b5960"))
+    buffer = QgsTextBufferSettings()
+    buffer.setEnabled(True)
+    buffer.setSize(0.5 if media else 0.35)
+    buffer.setColor(QColor("#f7f5ef"))
+    text.setBuffer(buffer)
+    settings.setFormat(text)
+    layer.setLabeling(QgsVectorLayerSimpleLabeling(settings))
+    layer.setLabelsEnabled(True)
+
+
+def _style_traffic_density(layer: QgsRasterLayer) -> None:
+    statistics = layer.dataProvider().bandStatistics(1)
+    maximum = max(float(statistics.maximumValue), 1.0)
+    shader_function = QgsColorRampShader()
+    shader_function.setColorRampType(QgsColorRampShader.Interpolated)
+    transparent = QColor("#8fa3ad")
+    transparent.setAlpha(0)
+    lower = QColor("#9aadb3")
+    lower.setAlpha(55)
+    common = QColor("#6f8d96")
+    common.setAlpha(95)
+    highest = QColor("#405f69")
+    highest.setAlpha(135)
+    shader_function.setColorRampItemList(
+        [
+            QgsColorRampShader.ColorRampItem(0.0, transparent, "No recorded density"),
+            QgsColorRampShader.ColorRampItem(maximum * 0.72, transparent, "Lower"),
+            QgsColorRampShader.ColorRampItem(maximum * 0.82, lower, "Moderate"),
+            QgsColorRampShader.ColorRampItem(maximum * 0.92, common, "Common corridor"),
+            QgsColorRampShader.ColorRampItem(maximum, highest, "Highest"),
+        ]
+    )
+    shader = QgsRasterShader()
+    shader.setRasterShaderFunction(shader_function)
+    layer.setRenderer(QgsSingleBandPseudoColorRenderer(layer.dataProvider(), 1, shader))
+    layer.setOpacity(0.20)
 
 
 def _line_style(layer: QgsVectorLayer, color: str, segment_type: str) -> None:
@@ -258,6 +349,8 @@ def _add_actor_layers(
         f'"actor_type" = \'{actor}\' AND "segment_type" = \'OBSERVED_TRACK\'',
     )
     _line_style(observed, color, "OBSERVED_TRACK")
+    if actor == "RESEARCH_SURVEY":
+        _label_track(observed, color)
     middle_layers: list[QgsVectorLayer] = []
     for middle_name in names[1:-2]:
         placeholder = _layer(
@@ -278,7 +371,8 @@ def _add_actor_layers(
         "observations",
         names[-2],
         (
-            f'"actor_type" = \'{actor}\' AND "source_type" = \'OFFICIAL_OBSERVATION\''
+            f'"actor_type" = \'{actor}\' AND "source_type" = \'OFFICIAL_OBSERVATION\' '
+            'AND coalesce("position_confidence", \'UNKNOWN\') <> \'LOW\''
         ),
     )
     _point_style(official, color)
@@ -316,6 +410,8 @@ def _legend_label(layer: QgsVectorLayer) -> str:
     )
     if layer.name() == "Inferred Segments":
         return f"{actor_name} inferred"
+    if layer.name() == "Observed Tracks":
+        return f"{actor_name} observed track"
     if layer.name() == "Official Observations":
         return f"{actor_name} official point"
     return layer.name()
@@ -333,6 +429,9 @@ def _legend_layer_has_evidence(layer: QgsVectorLayer, evidence: dict) -> bool:
         return int(evidence.get("actor_observation_counts", {}).get(actor, 0)) > 0
     if layer.name() == "Inferred Segments":
         key = f"{actor}:INFERRED_CONNECTION"
+        return int(evidence.get("actor_segment_counts", {}).get(key, 0)) > 0
+    if layer.name() == "Observed Tracks":
+        key = f"{actor}:OBSERVED_TRACK"
         return int(evidence.get("actor_segment_counts", {}).get(key, 0)) > 0
     return True
 
@@ -411,15 +510,16 @@ def build(spec_path: Path) -> dict:
     carto._style_line(coast, "#4c5558", 0.22)
     project.addMapLayer(bathy, False)
     groups["01 BASE"].addLayer(bathy)
+    traffic = None
     if spec["availability"]["normal_traffic_density"]:
         traffic = QgsRasterLayer(str(files["traffic_density"]), "Normal Traffic Density")
         if not traffic.isValid():
             raise RuntimeError("Cached traffic density raster is invalid")
+        _style_traffic_density(traffic)
         project.addMapLayer(traffic, False)
-        groups["01 BASE"].addLayer(traffic)
-        traffic.setOpacity(0.28)
+        groups["01 BASE"].insertLayer(2, traffic)
     else:
-        groups["01 BASE"].addGroup("Normal Traffic Density [NOT CACHED]")
+        groups["08 OPTIONAL / ANALYTIC"].addGroup("Normal Traffic Density [NOT CACHED]")
 
     territorial = _layer(
         project,
@@ -456,6 +556,18 @@ def build(spec_path: Path) -> dict:
         (other, "dot", "0.14"),
     ):
         _boundary_style(boundary, "#55656d", width, style)
+    boundary_visibility = {
+        territorial.id(): territorial.featureCount() > 0,
+        contiguous.id(): False,
+        eez.id(): eez.featureCount() > 0,
+        other.id(): False,
+    }
+    for boundary in (territorial, contiguous, eez, other):
+        _set_visibility(
+            groups["02 MARITIME JURISDICTION"],
+            boundary,
+            boundary_visibility[boundary.id()],
+        )
 
     evidence_layers: list[QgsVectorLayer] = []
     evidence_layers.extend(
@@ -530,6 +642,7 @@ def build(spec_path: Path) -> dict:
         '"actor_type" = \'PLAN\' AND "position_confidence" = \'LOW\'',
     )
     _point_style(uncertain, ACTOR_COLORS["PLAN"], uncertain=True)
+    _label_points(uncertain, ACTOR_COLORS["PLAN"])
     ccg_uncertain = _layer(
         project,
         groups["04 CHINA COAST GUARD"],
@@ -539,6 +652,7 @@ def build(spec_path: Path) -> dict:
         '"actor_type" = \'CCG\' AND "position_confidence" = \'LOW\'',
     )
     _point_style(ccg_uncertain, ACTOR_COLORS["CCG"], uncertain=True)
+    _label_points(ccg_uncertain, ACTOR_COLORS["CCG"])
     research_uncertain = _layer(
         project,
         groups["05 RESEARCH / SURVEY VESSELS"],
@@ -548,6 +662,7 @@ def build(spec_path: Path) -> dict:
         '"actor_type" = \'RESEARCH_SURVEY\' AND "position_confidence" = \'LOW\'',
     )
     _point_style(research_uncertain, ACTOR_COLORS["RESEARCH_SURVEY"], uncertain=True)
+    _label_points(research_uncertain, ACTOR_COLORS["RESEARCH_SURVEY"])
     fishing_uncertain = _layer(
         project,
         groups["06 CHINESE FISHING"],
@@ -557,6 +672,7 @@ def build(spec_path: Path) -> dict:
         '"actor_type" = \'FISHING\' AND "position_confidence" = \'LOW\'',
     )
     _point_style(fishing_uncertain, ACTOR_COLORS["FISHING"], uncertain=True)
+    _label_points(fishing_uncertain, ACTOR_COLORS["FISHING"])
 
     for name in ("Encounters", "Port Visits", "AIS Gaps", "User Notes"):
         placeholder = _layer(
@@ -569,6 +685,25 @@ def build(spec_path: Path) -> dict:
         )
         _point_style(placeholder, "#555555")
         _set_visibility(groups["07 EVENTS & ANNOTATIONS"], placeholder, False)
+    paper_orientation = _layer(
+        project,
+        groups["07 EVENTS & ANNOTATIONS"],
+        files["context_gpkg"],
+        "orientation_labels",
+        "Geographic Orientation - Paper",
+        '"paper_visible" = 1',
+    )
+    _style_orientation_labels(paper_orientation, media=False)
+    media_orientation = _layer(
+        project,
+        groups["07 EVENTS & ANNOTATIONS"],
+        files["context_gpkg"],
+        "orientation_labels",
+        "Geographic Orientation - Media",
+        '"media_visible" = 1',
+    )
+    _style_orientation_labels(media_orientation, media=True)
+    _set_visibility(groups["07 EVENTS & ANNOTATIONS"], media_orientation, False)
     groups["08 OPTIONAL / ANALYTIC"].addGroup("Additional user layers")
 
     extent = carto._extent_from_bbox(
@@ -579,53 +714,151 @@ def build(spec_path: Path) -> dict:
     )
     extent = _fit_extent(extent, spec["layout"]["map_mm"])
     source_manifest_data = json.loads(source_manifest.read_text(encoding="utf-8"))
-    source_names = [
-        str(item.get("dataset") or item.get("source_id"))
-        for item in source_manifest_data["sources"][:2]
+    source_ids = {str(item.get("source_id")) for item in source_manifest_data["sources"]}
+    source_names = ["GEBCO 2026"]
+    if "pangaea_xue_long_2012" in source_ids:
+        source_names.append("PANGAEA 891818 + World Bank shipping density")
+    elif spec["availability"]["normal_traffic_density"]:
+        source_names.append("World Bank shipping density + official public records")
+    else:
+        source_names.append("official public records; full sources in manifest")
+
+    context_entries = []
+    for boundary, label in (
+        (territorial, "Territorial Sea reference"),
+        (eez, "EEZ / reference EEZ"),
+        (other, "Other maritime boundary"),
+    ):
+        if boundary_visibility[boundary.id()] and boundary.featureCount() > 0:
+            context_entries.append((boundary, label))
+    evidence_entries = [
+        (layer, _legend_label(layer))
+        for layer in evidence_layers
+        if layer.name() in {"Observed Tracks", "Official Observations", "Inferred Segments"}
+        and _legend_layer_has_evidence(layer, build_data["evidence"])
     ]
-    legend_layers = [
-        uncertain,
-        *[
-            layer
-            for layer in evidence_layers
-            if layer.name() in {"Official Observations", "Inferred Segments"}
-            and _legend_layer_has_evidence(layer, build_data["evidence"])
-        ][:5],
-    ]
+    uncertain_candidates = [uncertain, ccg_uncertain, research_uncertain, fishing_uncertain]
+    uncertain_for_legend = next(
+        (layer for layer in uncertain_candidates if layer.featureCount() > 0), None
+    )
+    if uncertain_for_legend is not None:
+        evidence_entries.insert(0, (uncertain_for_legend, "Lower-confidence point"))
+    legend_sections = []
+    if context_entries:
+        legend_sections.append(("MARITIME CONTEXT", context_entries))
+    if evidence_entries:
+        legend_sections.append(("VESSEL / EVIDENCE", evidence_entries))
+    legend_layers = [layer for _, entries in legend_sections for layer, _ in entries]
+
     paper_spec = copy.deepcopy(spec)
     paper_spec["build"]["layout_profile"] = "MGRB Paper"
     paper_spec["build"]["visible_footer"] = True
-    paper_spec["legend_title"] = "Evidence"
-    paper_spec["legend_labels"] = [_legend_label(layer) for layer in legend_layers]
-    paper_spec["layout"]["legend_mm"] = [38.0, 34.0]
-    paper = carto._build_layout(project, paper_spec, extent, crs, source_names, legend_layers)
+    paper_spec["layout_title"] = spec["region"]["purpose"]
+    paper_spec["layout_subtitle"] = ""
+    paper_spec["legend_title"] = "LEGEND"
+    paper_spec["layout"]["legend_mm"] = [40.0, 50.0]
+    paper = carto._build_layout(
+        project,
+        paper_spec,
+        extent,
+        crs,
+        source_names,
+        legend_layers,
+        legend_sections=legend_sections,
+    )
 
     media_spec = copy.deepcopy(spec)
-    media_spec["build"]["layout_profile"] = "MGRB Media 16x9"
-    media_spec["region"]["purpose"] = spec["region"]["title"]
+    media_spec["build"]["layout_profile"] = "MGRB Media Editorial"
+    media_spec["layout_title"] = spec["region"].get("media_title") or spec["region"]["title"]
+    media_spec["layout_subtitle"] = spec["region"].get("media_subtitle") or ""
     media_geometry = {
-        "portrait": ([180.0, 225.0], [8.0, 12.0, 164.0, 203.0]),
-        "square": ([220.0, 200.0], [8.0, 12.0, 204.0, 178.0]),
-        "landscape": ([320.0, 180.0], [8.0, 12.0, 304.0, 158.0]),
+        "portrait": ([180.0, 225.0], [8.0, 19.0, 164.0, 194.0]),
+        "square": ([220.0, 200.0], [8.0, 19.0, 204.0, 169.0]),
+        "landscape": ([320.0, 180.0], [8.0, 19.0, 304.0, 149.0]),
     }
     media_page, media_map = media_geometry[spec["layout"]["orientation"]]
     media_spec["layout"] = {
         **spec["layout"],
         "page_mm": media_page,
         "map_mm": media_map,
-        "title_pt": 13,
+        "title_pt": 16,
+        "subtitle_pt": 8,
         "footer_pt": 5,
-        "legend_mm": [38.0, 34.0],
+        "legend_mm": [44.0, 52.0],
     }
-    media_spec["legend_title"] = "Evidence"
-    media_spec["legend_labels"] = [_legend_label(layer) for layer in legend_layers]
+    media_spec["legend_title"] = "LEGEND"
     media_extent = _fit_extent(
         carto._extent_from_bbox(project, spec["region"]["bbox"], crs, "180"),
         media_spec["layout"]["map_mm"],
     )
     media = carto._build_layout(
-        project, media_spec, media_extent, crs, source_names, legend_layers
+        project,
+        media_spec,
+        media_extent,
+        crs,
+        source_names,
+        legend_layers,
+        legend_sections=legend_sections,
     )
+    paper_scale_bar = paper.itemById("MGRB Scale Bar")
+    media_scale_bar = media.itemById("MGRB Scale Bar")
+    scale_bar_qa = {
+        "paper_unit_label": paper_scale_bar.unitLabel(),
+        "paper_interval_km": paper_scale_bar.unitsPerSegment(),
+        "paper_segments": paper_scale_bar.numberOfSegments(),
+        "media_unit_label": media_scale_bar.unitLabel(),
+        "media_interval_km": media_scale_bar.unitsPerSegment(),
+        "media_segments": media_scale_bar.numberOfSegments(),
+    }
+    scale_bar_qa["passed"] = (
+        scale_bar_qa["paper_unit_label"] == "km"
+        and scale_bar_qa["media_unit_label"] == "km"
+        and scale_bar_qa["paper_segments"] == 2
+        and scale_bar_qa["media_segments"] == 2
+        and scale_bar_qa["paper_interval_km"] < 1000
+        and scale_bar_qa["media_interval_km"] < 1000
+    )
+    if not scale_bar_qa["passed"]:
+        raise RuntimeError(f"Human-readable kilometre scale-bar QA failed: {scale_bar_qa}")
+
+    context_legend_qa = {
+        "visible_context_layers": [label for _, label in context_entries],
+        "legend_context_layers": [label for _, label in context_entries],
+        "hidden_context_layers": [
+            layer.name()
+            for layer in (territorial, contiguous, eez, other)
+            if not boundary_visibility[layer.id()]
+        ],
+    }
+    context_legend_qa["passed"] = (
+        context_legend_qa["visible_context_layers"]
+        == context_legend_qa["legend_context_layers"]
+    )
+    profile_distinction_qa = {
+        "paper_title": paper_spec["layout_title"],
+        "media_title": media_spec["layout_title"],
+        "media_subtitle": media_spec["layout_subtitle"],
+        "paper_title_pt": paper_spec["layout"]["title_pt"],
+        "media_title_pt": media_spec["layout"]["title_pt"],
+        "paper_orientation_labels": sum(
+            bool(label.get("paper", True))
+            for label in spec["region"].get("orientation_labels", [])
+        ),
+        "media_orientation_labels": sum(
+            bool(label.get("media", True))
+            for label in spec["region"].get("orientation_labels", [])
+        ),
+    }
+    profile_distinction_qa["passed"] = (
+        profile_distinction_qa["paper_title"] != profile_distinction_qa["media_title"]
+        and bool(profile_distinction_qa["media_subtitle"])
+        and profile_distinction_qa["media_title_pt"]
+        > profile_distinction_qa["paper_title_pt"]
+        and profile_distinction_qa["media_orientation_labels"]
+        >= profile_distinction_qa["paper_orientation_labels"]
+    )
+    if not profile_distinction_qa["passed"]:
+        raise RuntimeError(f"Paper/media profile distinction QA failed: {profile_distinction_qa}")
 
     for style_name, style_layer in (
         ("bathymetry-overlay-quiet.qml", bathy),
@@ -635,6 +868,8 @@ def build(spec_path: Path) -> dict:
     ):
         style_layer.saveNamedStyle(str(package / "styles" / style_name))
 
+    _set_visibility(groups["07 EVENTS & ANNOTATIONS"], paper_orientation, True)
+    _set_visibility(groups["07 EVENTS & ANNOTATIONS"], media_orientation, False)
     if not project.write(str(qgz)):
         raise RuntimeError(f"Failed to save QGIS project: {qgz}")
     if _project_has_repo_path(qgz):
@@ -650,7 +885,11 @@ def build(spec_path: Path) -> dict:
     _export_layout(paper, outputs["paper_png"], "png", 300)
     _export_layout(paper, outputs["paper_pdf"], "pdf", 300)
     _export_layout(paper, outputs["paper_svg"], "svg", 300)
+    _set_visibility(groups["07 EVENTS & ANNOTATIONS"], paper_orientation, False)
+    _set_visibility(groups["07 EVENTS & ANNOTATIONS"], media_orientation, True)
     _export_layout(media, outputs["media_png"], "png", 180)
+    _set_visibility(groups["07 EVENTS & ANNOTATIONS"], paper_orientation, True)
+    _set_visibility(groups["07 EVENTS & ANNOTATIONS"], media_orientation, False)
     for output in outputs.values():
         _embed_lineage(output, build_data)
 
@@ -668,7 +907,7 @@ def build(spec_path: Path) -> dict:
         crs,
         spec["region"]["bbox"],
         raster_bbox,
-        "180",
+        spec["region"].get("longitude_convention", "180"),
         spec["build"]["cartographic_profile"],
     )
     if not raster_qa["passed"]:
@@ -679,11 +918,38 @@ def build(spec_path: Path) -> dict:
         crs,
         spec["region"]["bbox"],
         raster_bbox,
-        "180",
+        spec["region"].get("longitude_convention", "180"),
         spec["build"]["cartographic_profile"],
     )
     if not media_raster_qa["passed"]:
         raise RuntimeError(f"Media raster coverage QA failed: {media_raster_qa}")
+    traffic_raster_qa = None
+    traffic_media_raster_qa = None
+    if traffic is not None:
+        traffic_bbox = carto._raster_bbox(files["traffic_density"])
+        traffic_raster_qa = carto._raster_coverage_qa(
+            project,
+            paper.referenceMap().extent(),
+            crs,
+            spec["region"]["bbox"],
+            traffic_bbox,
+            spec["region"].get("longitude_convention", "180"),
+            spec["build"]["cartographic_profile"],
+        )
+        traffic_media_raster_qa = carto._raster_coverage_qa(
+            project,
+            media.referenceMap().extent(),
+            crs,
+            spec["region"]["bbox"],
+            traffic_bbox,
+            spec["region"].get("longitude_convention", "180"),
+            spec["build"]["cartographic_profile"],
+        )
+        if not traffic_raster_qa["passed"] or not traffic_media_raster_qa["passed"]:
+            raise RuntimeError(
+                "Traffic-density raster coverage QA failed: "
+                f"{traffic_raster_qa}, {traffic_media_raster_qa}"
+            )
 
     manifest_paths = [build_manifest, source_manifest, style_manifest]
     artifacts = [qgz, *outputs.values(), *files.values()]
@@ -774,8 +1040,16 @@ def build(spec_path: Path) -> dict:
             "media_text": media_qa,
             "raster_coverage": raster_qa,
             "media_raster_coverage": media_raster_qa,
+            "traffic_raster_coverage": traffic_raster_qa,
+            "traffic_media_raster_coverage": traffic_media_raster_qa,
             "layout_geometry": layout_checks,
             "track_evidence_dominates_basemap": evidence_dominates_basemap,
+            "scale_bar": scale_bar_qa,
+            "context_legend": context_legend_qa,
+            "paper_media_distinction": profile_distinction_qa,
+            "inferred_entity_integrity": build_data["evidence"].get(
+                "inferred_entity_integrity", False
+            ),
         },
     }
     validation_path = package / "metadata" / "qgis-validation.json"

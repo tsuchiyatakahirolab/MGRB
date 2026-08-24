@@ -9,7 +9,14 @@ regions:
     gebco_stride: 4
     research_preset: true
     base_region: "taiwan_east_south"
+    base_build_id: "taiwan-local-canonical"
     default_actors: [PLAN, CCG, RESEARCH_SURVEY, FISHING]
+    media_title: "Chinese Maritime Activity East of Taiwan, 2022-2026"
+    media_subtitle: "Publicly reported PLAN, CCG, and research-vessel observations"
+    orientation_labels:
+      - {name: "Taiwan", longitude: 121.05, latitude: 23.75, role: land, paper: true, media: true}
+      - {name: "Yaeyama Islands", longitude: 124.05, latitude: 24.48, role: island_group, paper: true, media: true}
+      - {name: "Philippine Sea", longitude: 124.20, latitude: 22.75, role: sea, paper: false, media: true}
     context_sources:
       land: [gshhg_2_3_7, natural_earth_5_1_2]
       coastline: [gshhg_2_3_7, natural_earth_5_1_2]
@@ -24,7 +31,15 @@ regions:
     gebco_stride: 4
     research_preset: true
     base_region: "taiwan_east_south"
+    base_build_id: "taiwan-local-canonical"
     default_actors: [PLAN, CCG, RESEARCH_SURVEY, FISHING]
+    media_title: "Maritime Activity South of Taiwan, 2022-2026"
+    media_subtitle: "Publicly reported coast-guard, naval, and fishing-vessel observations"
+    orientation_labels:
+      - {name: "Taiwan", longitude: 120.85, latitude: 22.85, role: land, paper: true, media: true}
+      - {name: "Luzon", longitude: 120.65, latitude: 18.65, role: land, paper: true, media: true}
+      - {name: "Batanes", longitude: 121.85, latitude: 20.48, role: island_group, paper: true, media: true}
+      - {name: "Bashi Channel", longitude: 121.45, latitude: 21.35, role: sea, paper: false, media: true}
     context_sources:
       land: [gshhg_2_3_7, natural_earth_5_1_2]
       coastline: [gshhg_2_3_7, natural_earth_5_1_2]
@@ -36,6 +51,31 @@ regions:
     layout_scale: "local"
     profile: "local"
     gebco_stride: 4
+    context_sources:
+      land: [gshhg_2_3_7, natural_earth_5_1_2]
+      coastline: [gshhg_2_3_7, natural_earth_5_1_2]
+      labels: [natural_earth_5_1_2]
+  xue-long-arctic-2012:
+    # Use the existing Pacific-centred convention so the tall Arctic frame can
+    # include both sides of the antimeridian without exposing a raster seam.
+    bbox_360: [184.0, 64.0, 200.0, 83.0]
+    purpose: "Xue Long 2012 Arctic cruise through the Bering Strait and Chukchi Sea"
+    title: "Xue Long 2012 Public Research Track Workspace"
+    display_crs: "+proj=laea +lat_0=74 +lon_0=192 +datum=WGS84 +units=m +no_defs +type=crs"
+    layout_scale: "regional"
+    profile: "regional"
+    gebco_stride: 12
+    research_preset: true
+    base_region: "xue-long-arctic-2012"
+    base_build_id: "xue-long-arctic-2012-base"
+    default_actors: [RESEARCH_SURVEY]
+    public_evidence_sources: [pangaea_xue_long_2012]
+    media_title: "Xue Long's 2012 Arctic Research Voyage"
+    media_subtitle: "3,186 public underway positions published by PANGAEA"
+    orientation_labels:
+      - {name: "Alaska", longitude: -164.0, latitude: 66.0, role: land, paper: true, media: true}
+      - {name: "Chukchi Sea", longitude: -169.5, latitude: 70.5, role: sea, paper: true, media: true}
+      - {name: "Arctic Ocean", longitude: -169.0, latitude: 80.5, role: sea, paper: false, media: true}
     context_sources:
       land: [gshhg_2_3_7, natural_earth_5_1_2]
       coastline: [gshhg_2_3_7, natural_earth_5_1_2]
