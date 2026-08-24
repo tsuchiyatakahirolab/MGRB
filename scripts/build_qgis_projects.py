@@ -519,9 +519,15 @@ def _build_layout(
     legend.setTitle(spec.get("legend_title", "Public base"))
     legend.setAutoUpdateModel(False)
     legend.model().rootGroup().clear()
-    for layer in legend_layers:
+    legend_labels = spec.get("legend_labels", [])
+    for index, layer in enumerate(legend_layers):
         if layer is not None:
-            legend.model().rootGroup().addLayer(layer)
+            node = legend.model().rootGroup().addLayer(layer)
+            if index < len(legend_labels) and legend_labels[index]:
+                node.setCustomProperty("legend/title-label", legend_labels[index])
+                legend.model().refreshLayerLegend(node)
+                for legend_node in legend.model().layerLegendNodes(node):
+                    legend_node.setUserLabel(legend_labels[index])
     legend.setLegendFilterByMapEnabled(False)
     legend.setResizeToContents(False)
     legend.rstyle(QgsLegendStyle.Title).setTextFormat(

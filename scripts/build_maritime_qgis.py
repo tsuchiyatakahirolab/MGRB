@@ -293,6 +293,32 @@ def _add_actor_layers(
     return [observed, *middle_layers, official, inferred]
 
 
+def _legend_label(layer: QgsVectorLayer) -> str:
+    if layer.name() == "Uncertain Detections":
+        return "Lower-confidence point"
+    if layer.name() == "EEZ / Reference EEZ":
+        return "EEZ / reference EEZ"
+    subset = layer.subsetString()
+    actor_name = next(
+        (
+            label
+            for actor, label in (
+                ("PLAN", "PLAN"),
+                ("CCG", "CCG"),
+                ("RESEARCH_SURVEY", "Research/survey"),
+                ("FISHING", "Fishing"),
+            )
+            if f"'{actor}'" in subset
+        ),
+        "Evidence",
+    )
+    if layer.name() == "Inferred Segments":
+        return f"{actor_name} inferred"
+    if layer.name() == "Official Observations":
+        return f"{actor_name} official point"
+    return layer.name()
+
+
 def build(spec_path: Path) -> dict:
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     package = spec_path.parents[1]
@@ -547,13 +573,13 @@ def build(spec_path: Path) -> dict:
             if layer.name() in {"Official Observations", "Inferred Segments"}
             and layer.featureCount() > 0
         ][:5],
-        eez,
     ]
     paper_spec = copy.deepcopy(spec)
     paper_spec["build"]["layout_profile"] = "MGRB Paper"
     paper_spec["build"]["visible_footer"] = True
     paper_spec["legend_title"] = "Evidence"
-    paper_spec["layout"]["legend_mm"] = [34.0, 28.0]
+    paper_spec["legend_labels"] = [_legend_label(layer) for layer in legend_layers]
+    paper_spec["layout"]["legend_mm"] = [38.0, 34.0]
     paper = carto._build_layout(project, paper_spec, extent, crs, source_names, legend_layers)
 
     media_spec = copy.deepcopy(spec)
@@ -571,9 +597,10 @@ def build(spec_path: Path) -> dict:
         "map_mm": media_map,
         "title_pt": 13,
         "footer_pt": 5,
-        "legend_mm": [38.0, 30.0],
+        "legend_mm": [38.0, 34.0],
     }
     media_spec["legend_title"] = "Evidence"
+    media_spec["legend_labels"] = [_legend_label(layer) for layer in legend_layers]
     media_extent = _fit_extent(
         carto._extent_from_bbox(project, spec["region"]["bbox"], crs, "180"),
         media_spec["layout"]["map_mm"],
