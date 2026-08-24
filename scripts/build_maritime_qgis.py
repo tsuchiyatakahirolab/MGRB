@@ -85,7 +85,14 @@ def _point_style(layer: QgsVectorLayer, color: str, *, uncertain: bool = False) 
 
 def _label_points(layer: QgsVectorLayer, color: str) -> None:
     settings = QgsPalLayerSettings()
-    settings.fieldName = "vessel_name"
+    settings.fieldName = (
+        "CASE "
+        "WHEN \"actor_type\" = 'CCG' THEN replace(\"vessel_name\", 'China Coast Guard', 'CCG') "
+        "WHEN \"actor_type\" = 'RESEARCH_SURVEY' THEN \"vessel_name\" "
+        "WHEN \"actor_type\" = 'FISHING' THEN \"vessel_name\" "
+        "ELSE \"vessel_name\" END"
+    )
+    settings.isExpression = True
     settings.enabled = True
     settings.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
     text = QgsTextFormat()
@@ -133,6 +140,7 @@ def _boundary_style(layer: QgsVectorLayer, color: str, width: str, style: str) -
                 )
             )
         )
+        layer.setOpacity(0.48)
         return
     layer.setRenderer(
         QgsSingleSymbolRenderer(
@@ -141,6 +149,7 @@ def _boundary_style(layer: QgsVectorLayer, color: str, width: str, style: str) -
             )
         )
     )
+    layer.setOpacity(0.48)
 
 
 def _set_visibility(group, layer: QgsVectorLayer, visible: bool) -> None:
@@ -267,8 +276,7 @@ def _add_actor_layers(
         "observations",
         names[-2],
         (
-            f'"actor_type" = \'{actor}\' AND "source_type" = \'OFFICIAL_OBSERVATION\' '
-            'AND coalesce("position_confidence", \'UNKNOWN\') <> \'LOW\''
+            f'"actor_type" = \'{actor}\' AND "source_type" = \'OFFICIAL_OBSERVATION\''
         ),
     )
     _point_style(official, color)
@@ -398,10 +406,10 @@ def build(spec_path: Path) -> dict:
         "Other Maritime Boundaries",
     )
     for boundary, style, width in (
-        (territorial, "solid", "0.40"),
-        (contiguous, "dash dot", "0.32"),
-        (eez, "dash", "0.28"),
-        (other, "dot", "0.24"),
+        (territorial, "solid", "0.22"),
+        (contiguous, "dash dot", "0.18"),
+        (eez, "dash", "0.16"),
+        (other, "dot", "0.14"),
     ):
         _boundary_style(boundary, "#55656d", width, style)
 
@@ -487,6 +495,24 @@ def build(spec_path: Path) -> dict:
         '"actor_type" = \'CCG\' AND "position_confidence" = \'LOW\'',
     )
     _point_style(ccg_uncertain, ACTOR_COLORS["CCG"], uncertain=True)
+    research_uncertain = _layer(
+        project,
+        groups["05 RESEARCH / SURVEY VESSELS"],
+        files["observations_gpkg"],
+        "observations",
+        "Uncertain Detections",
+        '"actor_type" = \'RESEARCH_SURVEY\' AND "position_confidence" = \'LOW\'',
+    )
+    _point_style(research_uncertain, ACTOR_COLORS["RESEARCH_SURVEY"], uncertain=True)
+    fishing_uncertain = _layer(
+        project,
+        groups["06 CHINESE FISHING"],
+        files["observations_gpkg"],
+        "observations",
+        "Uncertain Detections",
+        '"actor_type" = \'FISHING\' AND "position_confidence" = \'LOW\'',
+    )
+    _point_style(fishing_uncertain, ACTOR_COLORS["FISHING"], uncertain=True)
 
     for name in ("Encounters", "Port Visits", "AIS Gaps", "User Notes"):
         placeholder = _layer(
