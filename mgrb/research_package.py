@@ -493,6 +493,13 @@ def prepare_research_package(
             "quality_flags": len(qc.quality_flags),
             "track_segments": len(qc.track_segments),
             "segment_types": qc.track_segments["segment_type"].value_counts().to_dict(),
+            "actor_observation_counts": qc.cleaned_points["actor_type"].value_counts().to_dict(),
+            "actor_segment_counts": {
+                f"{actor}:{segment_type}": int(count)
+                for (actor, segment_type), count in qc.track_segments.groupby(
+                    ["actor_type", "segment_type"]
+                ).size().items()
+            },
         },
         "restricted_raw_data_included": False,
         "source_warnings": source_warnings,

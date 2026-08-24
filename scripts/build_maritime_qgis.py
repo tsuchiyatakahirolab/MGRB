@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import gc
 import json
 import os
 import shutil
@@ -16,6 +17,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from qgis.core import (  # type: ignore
     Qgis,
+    QgsApplication,
     QgsCoordinateReferenceSystem,
     QgsExpressionContextUtils,
     QgsFillSymbol,
@@ -319,6 +321,22 @@ def _legend_label(layer: QgsVectorLayer) -> str:
     return layer.name()
 
 
+def _legend_layer_has_evidence(layer: QgsVectorLayer, evidence: dict) -> bool:
+    subset = layer.subsetString()
+    actor = next(
+        (candidate for candidate in ACTOR_COLORS if f"'{candidate}'" in subset),
+        None,
+    )
+    if actor is None:
+        return True
+    if layer.name() == "Official Observations":
+        return int(evidence.get("actor_observation_counts", {}).get(actor, 0)) > 0
+    if layer.name() == "Inferred Segments":
+        key = f"{actor}:INFERRED_CONNECTION"
+        return int(evidence.get("actor_segment_counts", {}).get(key, 0)) > 0
+    return True
+
+
 def build(spec_path: Path) -> dict:
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     package = spec_path.parents[1]
@@ -571,7 +589,7 @@ def build(spec_path: Path) -> dict:
             layer
             for layer in evidence_layers
             if layer.name() in {"Official Observations", "Inferred Segments"}
-            and layer.featureCount() > 0
+            and _legend_layer_has_evidence(layer, build_data["evidence"])
         ][:5],
     ]
     paper_spec = copy.deepcopy(spec)
@@ -694,6 +712,9 @@ def build(spec_path: Path) -> dict:
     if group_names != expected_groups:
         raise RuntimeError(f"Unexpected QGIS layer tree: {group_names}")
     reopened.clear()
+    del reopened
+    gc.collect()
+    QgsApplication.processEvents()
 
     portable_root = ROOT / ".tmp" / "portability" / build_data["build_id"]
     if portable_root.exists():
@@ -704,6 +725,9 @@ def build(spec_path: Path) -> dict:
     portable_ok = portable.read(str(portable_project))
     portable_invalid = sorted(layer.name() for layer in portable.mapLayers().values() if not layer.isValid())
     portable.clear()
+    del portable
+    gc.collect()
+    QgsApplication.processEvents()
     shutil.rmtree(portable_root)
     if not portable_ok or portable_invalid:
         raise RuntimeError(f"Portable-copy reopen failed: {portable_invalid}")
