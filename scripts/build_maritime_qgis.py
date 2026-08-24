@@ -732,13 +732,37 @@ def build(spec_path: Path) -> dict:
     if not portable_ok or portable_invalid:
         raise RuntimeError(f"Portable-copy reopen failed: {portable_invalid}")
 
+    layer_count = len(project.mapLayers())
+    project.clear()
+    gc.collect()
+    QgsApplication.processEvents()
+
+    # Reopening a GeoPackage may update internal provider metadata on some GDAL/QGIS
+    # combinations. Finalize lineage only after every provider has been released.
+    sidecars = [
+        write_artifact_sidecar(artifact, build_manifest, source_manifest, style_manifest)
+        for artifact in dict.fromkeys(artifacts)
+        if artifact.is_file()
+    ]
+    write_sha256sums(
+        [*dict.fromkeys(artifacts), *sidecars, *manifest_paths],
+        package / "metadata" / "SHA256SUMS",
+        package,
+    )
+    verification = {
+        artifact.relative_to(package).as_posix(): verify_generated_file(artifact)["ok"]
+        for artifact in [qgz, *outputs.values()]
+    }
+    if not all(verification.values()):
+        raise RuntimeError(f"Final lineage verification failed: {verification}")
+
     validation = {
         "schema": "mgrb-maritime-qgis-validation-1.0",
         "build_id": build_data["build_id"],
         "qgis_version": Qgis.QGIS_VERSION,
         "project": qgz.relative_to(package).as_posix(),
         "layer_groups": group_names,
-        "layer_count": len(project.mapLayers()),
+        "layer_count": layer_count,
         "exports": {key: value.relative_to(package).as_posix() for key, value in outputs.items()},
         "artifact_verification": verification,
         "relative_paths": not _project_has_repo_path(qgz),
