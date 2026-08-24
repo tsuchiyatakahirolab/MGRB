@@ -12,7 +12,15 @@ class PublicSource:
     source_id: str
     metadata: dict[str, Any]
 
-    def manifest_record(self, layers: list[str], transformations: list[str]) -> dict[str, Any]:
+    def manifest_record(
+        self,
+        layers: list[str],
+        transformations: list[str],
+        *,
+        downloaded_at_utc: str | None = None,
+        source_hash: str | None = None,
+        availability: str = "AVAILABLE",
+    ) -> dict[str, Any]:
         version = self.metadata.get("version") or self.metadata.get("released")
         return {
             "source_id": self.source_id,
@@ -25,6 +33,18 @@ class PublicSource:
             "doi": self.metadata.get("doi"),
             "licence": self.metadata["licence"],
             "redistribution": self.metadata.get("redistribution"),
+            "allowed_use": self.metadata.get("allowed_use", "NOT_SPECIFIED"),
+            "attribution_required": bool(self.metadata.get("attribution_required", True)),
+            "redistribution_allowed": self.metadata.get(
+                "redistribution_allowed", self.metadata.get("redistribution", "UNKNOWN")
+            ),
+            "commercial_use_known": bool(self.metadata.get("commercial_use_known", False)),
+            "spatial_resolution": self.metadata.get("spatial_resolution")
+            or self.metadata.get("resolution"),
+            "temporal_coverage": self.metadata.get("temporal_coverage"),
+            "download_timestamp_utc": downloaded_at_utc,
+            "source_sha256": source_hash,
+            "availability": availability,
             "layers": sorted(layers),
             "transformations": transformations,
         }

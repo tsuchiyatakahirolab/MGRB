@@ -4,6 +4,7 @@ import argparse
 import importlib.util
 import json
 import platform
+from datetime import date
 from pathlib import Path
 
 from . import __version__
@@ -13,7 +14,12 @@ from .provenance import verify_manifest, write_manifest
 from .sources import SourceRegistry
 from .theme import resolve_theme
 from .verification import verify_generated_file
-from .workflow import BuildRequest, execute_build
+from .workflow import (
+    BuildRequest,
+    MaritimeBuildRequest,
+    execute_build,
+    execute_maritime_build,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -59,7 +65,8 @@ def main() -> None:
     b = sub.add_parser("build", aliases=["build-region"])
     b.add_argument("region")
     b.add_argument("--config", type=Path, default=Path("config/regions.yml"))
-    b.add_argument("--output", type=Path, default=Path("build/outputs"))
+    b.add_argument("--output", default="build/outputs")
+    b.add_argument("--output-root", type=Path)
     b.add_argument("--derived-output", type=Path, default=Path("data/derived"))
     b.add_argument("--land", type=Path)
     b.add_argument("--coastline", type=Path)
@@ -77,6 +84,14 @@ def main() -> None:
     b.add_argument("--labels-source")
     b.add_argument("--output-name")
     b.add_argument("--no-visible-footer", action="store_true")
+    b.add_argument("--from", dest="start_date", type=date.fromisoformat)
+    b.add_argument("--to", dest="end_date", type=date.fromisoformat)
+    b.add_argument("--actors", default="")
+    b.add_argument("--public-data", action="store_true", default=True)
+    b.add_argument("--no-public-data", action="store_false", dest="public_data")
+    b.add_argument("--local-data", type=Path, action="append", default=[])
+    b.add_argument("--offline", action="store_true")
+    b.add_argument("--traffic-density", type=Path)
 
     args = p.parse_args()
     if args.cmd == "doctor":
@@ -102,6 +117,48 @@ def main() -> None:
         if args.region not in regions:
             raise SystemExit(f"Unknown region: {args.region}")
         region = regions[args.region]
+        if region.research_preset:
+            requested_outputs = args.output if "," in str(args.output) else "paper,qgis,media"
+            unknown_outputs = set(requested_outputs.split(",")) - {"paper", "qgis", "media"}
+            if unknown_outputs:
+                raise SystemExit(f"Unknown maritime output profile(s): {sorted(unknown_outputs)}")
+            output_root = args.output_root or (
+                Path("build/maritime") if "," in str(args.output) else Path(args.output)
+            )
+            result = execute_maritime_build(
+                MaritimeBuildRequest(
+                    area=region.name,
+                    output_root=output_root,
+                    build_id=args.output_name,
+                    start_date=args.start_date,
+                    end_date=args.end_date,
+                    actors=tuple(item.strip() for item in args.actors.split(",") if item.strip()),
+                    public_data=args.public_data,
+                    local_inputs=tuple(args.local_data),
+                    live_sources=not args.offline,
+                    traffic_density=args.traffic_density,
+                ),
+                ROOT,
+            )
+            output_display = (
+                result.output.relative_to(ROOT).as_posix()
+                if result.output.is_relative_to(ROOT)
+                else str(result.output)
+            )
+            print(
+                json.dumps(
+                    {
+                        "ok": True,
+                        "build_id": result.build_id,
+                        "output": output_display,
+                        "qgis_project": str(result.qgis_project),
+                        "elapsed_seconds": round(result.elapsed_seconds, 3),
+                        "outputs": requested_outputs.split(","),
+                    },
+                    indent=2,
+                )
+            )
+            return
         profiles = load_profiles(args.profiles_config)
         profile_name = args.profile or region.profile
         if profile_name not in profiles:
@@ -119,7 +176,7 @@ def main() -> None:
                     region=region.name,
                     profile=profile_name,
                     theme=args.theme,
-                    output_root=args.output,
+                    output_root=Path(args.output),
                     build_id=args.output_name,
                     visible_footer=not args.no_visible_footer,
                 ),

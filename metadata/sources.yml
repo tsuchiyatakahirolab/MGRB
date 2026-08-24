@@ -11,6 +11,12 @@ sources:
     redistribution: "Public-domain information product subject to GEBCO terms; retain GEBCO attribution and disclaimer."
     licence: "Public domain; GEBCO terms of use and attribution apply"
     role: "canonical_bathymetry"
+    allowed_use: "research, publication, and derivative products with attribution and disclaimer"
+    attribution_required: true
+    redistribution_allowed: true
+    commercial_use_known: true
+    spatial_resolution: "15 arc-second"
+    temporal_coverage: "compiled grid released 2026-04-23"
   natural_earth_5_1_2:
     title: "Natural Earth Vector"
     provider: "Natural Earth"
@@ -20,6 +26,12 @@ sources:
     licence: "Public domain"
     acquisition: "Pin to release tag v5.1.2."
     role: "global_cartographic_context"
+    allowed_use: "unrestricted public-domain use"
+    attribution_required: false
+    redistribution_allowed: true
+    commercial_use_known: true
+    spatial_resolution: "1:10m and 1:110m products"
+    temporal_coverage: "version 5.1.2"
   gshhg_2_3_7:
     title: "Global Self-consistent, Hierarchical, High-resolution Geography Database"
     provider: "Paul Wessel / Walter H. F. Smith; SOEST and NOAA/NCEI distribution"
@@ -30,6 +42,12 @@ sources:
     licence: "GNU LGPL"
     acquisition: "Download shapefile distribution from SOEST/NOAA source."
     role: "high_resolution_coastline_optional"
+    allowed_use: "use and redistribution under GNU LGPL"
+    attribution_required: true
+    redistribution_allowed: true
+    commercial_use_known: true
+    spatial_resolution: "full/high/intermediate/low/crude hierarchy"
+    temporal_coverage: "version 2.3.7"
   marine_regions_eez_v12:
     title: "Maritime Boundaries Geodatabase: EEZ (200NM), version 12"
     provider: "Flanders Marine Institute (VLIZ), Marine Regions"
@@ -40,3 +58,127 @@ sources:
     acquisition: "Obtain directly from Marine Regions under provider terms; ingest locally."
     legal_status: "provider_reference"
     role: "maritime_zone_reference"
+    allowed_use: "research and redistribution under CC BY 4.0; always refer users to the canonical provider"
+    attribution_required: true
+    redistribution_allowed: true
+    commercial_use_known: true
+    spatial_resolution: "provider vector geometry"
+    temporal_coverage: "version 12 released 2023-10-25"
+  marine_regions_territorial_sea_v4:
+    title: "World 12 Nautical Miles Zone (Territorial Seas), version 4"
+    provider: "Flanders Marine Institute (VLIZ), Marine Regions"
+    released: "2023-10-25"
+    doi: "10.14284/633"
+    homepage: "https://www.marineregions.org/downloads.php"
+    download: "https://geo.vliz.be/geoserver/MarineRegions/wfs"
+    licence: "CC BY 4.0"
+    acquisition: "Official Marine Regions WFS layer MarineRegions:eez_12nm."
+    legal_status: "provider_reference"
+    role: "territorial_sea_reference"
+    allowed_use: "research and redistribution under CC BY 4.0; always refer users to the canonical provider"
+    attribution_required: true
+    redistribution_allowed: true
+    commercial_use_known: true
+    spatial_resolution: "provider vector geometry"
+    temporal_coverage: "version 4 released 2023-10-25"
+  marine_regions_contiguous_zone_v4:
+    title: "World 24 Nautical Miles Zone (Contiguous Zone), version 4"
+    provider: "Flanders Marine Institute (VLIZ), Marine Regions"
+    released: "2023-10-25"
+    doi: "10.14284/634"
+    homepage: "https://www.marineregions.org/downloads.php"
+    download: "https://geo.vliz.be/geoserver/MarineRegions/wfs"
+    licence: "CC BY 4.0"
+    acquisition: "Official Marine Regions WFS layer MarineRegions:eez_24nm."
+    legal_status: "provider_reference"
+    role: "contiguous_zone_reference"
+    allowed_use: "research and redistribution under CC BY 4.0; always refer users to the canonical provider"
+    attribution_required: true
+    redistribution_allowed: true
+    commercial_use_known: true
+    spatial_resolution: "provider vector geometry"
+    temporal_coverage: "version 4 released 2023-10-25"
+  world_bank_shipping_density_2021:
+    title: "Global Shipping Traffic Density"
+    provider: "World Bank / International Monetary Fund"
+    version: "2021-05-03"
+    homepage: "https://datacatalog.worldbank.org/search/dataset/0037580/global-shipping-traffic-density"
+    licence: "CC BY 4.0"
+    acquisition: "Large provider archive; user cache required for v1 builds unless explicitly requested."
+    role: "historical_normal_traffic_baseline"
+    allowed_use: "research, publication, redistribution, and commercial use under CC BY 4.0"
+    attribution_required: true
+    redistribution_allowed: true
+    commercial_use_known: true
+    spatial_resolution: "0.005 degree grid"
+    temporal_coverage: "AIS positions aggregated from 2015-01 through 2021-02"
+  japan_joint_staff_public_observations:
+    title: "Chinese naval vessel movement press releases"
+    provider: "Japan Ministry of Defense, Joint Staff"
+    version: "individual dated releases"
+    homepage: "https://www.mod.go.jp/js/activity/domestic/keikai2025.html"
+    licence: "Japanese government webpage; reuse terms require review"
+    acquisition: "Normalize factual observations and retain source URL; do not redistribute source PDFs."
+    role: "official_observation"
+    allowed_use: "local research reference and citation; derived factual records only in public package"
+    attribution_required: true
+    redistribution_allowed: "DERIVED_FACTS_ONLY"
+    commercial_use_known: false
+    spatial_resolution: "text-relative and provider-map-derived positions"
+    temporal_coverage: "selected 2025 releases"
+  japan_mofa_jcg_public_observations:
+    title: "Public observations of foreign research vessels"
+    provider: "Japan Ministry of Foreign Affairs / Japan Coast Guard"
+    version: "individual dated releases"
+    homepage: "https://www.mofa.go.jp/mofaj/press/release/press1_000909.html"
+    licence: "Japanese government webpage; reuse terms require review"
+    acquisition: "Normalize factual observations and retain source URL; do not redistribute page snapshots."
+    role: "official_observation"
+    allowed_use: "local research reference and citation; derived factual records only in public package"
+    attribution_required: true
+    redistribution_allowed: "DERIVED_FACTS_ONLY"
+    commercial_use_known: false
+    spatial_resolution: "text-relative positions"
+    temporal_coverage: "selected 2022 release"
+  taiwan_cga_public_observations:
+    title: "Public maritime observation and clarification releases"
+    provider: "Taiwan Coast Guard Administration"
+    version: "individual dated releases"
+    homepage: "https://www.cga.gov.tw/"
+    licence: "Taiwan government webpage; reuse terms require review"
+    acquisition: "Normalize factual observations and retain source URL; do not redistribute page snapshots."
+    role: "official_observation"
+    allowed_use: "local research reference and citation; derived factual records only in public package"
+    attribution_required: true
+    redistribution_allowed: "DERIVED_FACTS_ONLY"
+    commercial_use_known: false
+    spatial_resolution: "text-relative and text-described positions"
+    temporal_coverage: "selected 2025-2026 releases"
+  global_fishing_watch_import:
+    title: "Global Fishing Watch public data products"
+    provider: "Global Fishing Watch"
+    version: "provider-current; pin per build"
+    homepage: "https://globalfishingwatch.org/our-apis/"
+    licence: "Product-specific; must be recorded per imported dataset"
+    acquisition: "Import or API adapter where currently permitted; live access is not required in CI."
+    role: "track_evidence_import"
+    allowed_use: "product-specific"
+    attribution_required: true
+    redistribution_allowed: "PRODUCT_SPECIFIC"
+    commercial_use_known: false
+    spatial_resolution: "product-specific"
+    temporal_coverage: "product-specific"
+  viirs_boat_detection_import:
+    title: "Public processed VIIRS boat detections"
+    provider: "Provider-specific public VIIRS product"
+    version: "pin per build"
+    homepage: null
+    licence: "Provider-specific; must be recorded per imported dataset"
+    acquisition: "Import normalized detections; no live dependency in CI."
+    role: "viirs_detection_import"
+    allowed_use: "provider-specific"
+    attribution_required: true
+    redistribution_allowed: "PRODUCT_SPECIFIC"
+    commercial_use_known: false
+    spatial_resolution: "product-specific"
+    temporal_coverage: "product-specific"

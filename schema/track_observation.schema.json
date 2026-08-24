@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgrb.example/schema/track_observation.schema.json",
+  "title": "MGRB canonical maritime observation",
+  "type": "object",
+  "required": [
+    "observation_id", "entity_id", "timestamp_start", "timestamp_end", "latitude",
+    "longitude", "actor_type", "source_type", "source_name", "source_record_id",
+    "source_date", "observation_method", "identity_confidence", "position_confidence",
+    "observed_or_inferred", "position_uncertainty_m", "temporal_uncertainty_s",
+    "license", "attribution", "processing_notes", "build_id"
+  ],
+  "properties": {
+    "observation_id": {"type": "string", "minLength": 1},
+    "entity_id": {"type": ["string", "null"]},
+    "timestamp_start": {"type": ["string", "null"], "format": "date-time"},
+    "timestamp_end": {"type": ["string", "null"], "format": "date-time"},
+    "latitude": {"type": ["number", "null"], "minimum": -90, "maximum": 90},
+    "longitude": {"type": ["number", "null"], "minimum": -180, "maximum": 180},
+    "geometry": {},
+    "actor_type": {"type": "string"},
+    "vessel_name": {"type": ["string", "null"]},
+    "hull_number": {"type": ["string", "null"]},
+    "IMO": {"type": ["string", "null"]},
+    "MMSI": {"type": ["string", "null"]},
+    "source_type": {
+      "enum": ["AIS", "OFFICIAL_OBSERVATION", "SAR_DETECTION", "OPTICAL_DETECTION", "VIIRS_BOAT_DETECTION", "PORT_RECORD", "USER_SUPPLIED", "LICENSED_EXTERNAL"]
+    },
+    "source_name": {"type": "string"},
+    "source_record_id": {"type": "string"},
+    "source_url": {"type": ["string", "null"]},
+    "source_date": {"type": "string", "format": "date"},
+    "observation_method": {"type": "string"},
+    "identity_confidence": {"type": "string"},
+    "position_confidence": {"type": "string"},
+    "observed_or_inferred": {"enum": ["OBSERVED", "INTERPOLATED_SHORT_GAP", "INFERRED_ROUTE", "UNKNOWN"]},
+    "position_uncertainty_m": {"type": ["number", "null"], "minimum": 0},
+    "temporal_uncertainty_s": {"type": ["number", "null"], "minimum": 0},
+    "license": {"type": "string"},
+    "attribution": {"type": "string"},
+    "raw_record_reference": {"type": ["string", "null"]},
+    "processing_notes": {"type": "string"},
+    "build_id": {"type": "string"}
+  },
+  "additionalProperties": true
+}

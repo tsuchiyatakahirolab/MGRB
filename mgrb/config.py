@@ -18,6 +18,10 @@ class Region:
     profile: str = "regional"
     gebco_stride: int = 12
     context_sources: dict[str, tuple[str, ...]] | None = None
+    research_preset: bool = False
+    base_region: str | None = None
+    title: str = ""
+    default_actors: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -70,6 +74,10 @@ def load_regions(path: Path) -> dict[str, Region]:
                 layer: tuple(str(source_id) for source_id in source_ids)
                 for layer, source_ids in cfg.get("context_sources", {}).items()
             },
+            research_preset=bool(cfg.get("research_preset", False)),
+            base_region=str(cfg["base_region"]) if cfg.get("base_region") else None,
+            title=str(cfg.get("title", cfg.get("purpose", name))),
+            default_actors=tuple(str(value).upper() for value in cfg.get("default_actors", ())),
         )
     return out
 

@@ -1,4 +1,34 @@
 regions:
+  taiwan-east:
+    bbox_180: [120.7, 20.5, 125.3, 26.4]
+    purpose: "Taiwan east, Yaeyama approaches, and adjacent Philippine Sea"
+    title: "Taiwan East Maritime Evidence Workspace"
+    display_crs: "+proj=laea +lat_0=23.5 +lon_0=123 +datum=WGS84 +units=m +no_defs +type=crs"
+    layout_scale: "local"
+    profile: "local"
+    gebco_stride: 4
+    research_preset: true
+    base_region: "taiwan_east_south"
+    default_actors: [PLAN, CCG, RESEARCH_SURVEY, FISHING]
+    context_sources:
+      land: [gshhg_2_3_7, natural_earth_5_1_2]
+      coastline: [gshhg_2_3_7, natural_earth_5_1_2]
+      labels: [natural_earth_5_1_2]
+  taiwan-south:
+    bbox_180: [118.9, 18.2, 124.5, 23.8]
+    purpose: "Taiwan south, Bashi Channel, Luzon Strait, and northern South China Sea"
+    title: "Taiwan South Maritime Evidence Workspace"
+    display_crs: "+proj=laea +lat_0=21 +lon_0=121.7 +datum=WGS84 +units=m +no_defs +type=crs"
+    layout_scale: "local"
+    profile: "local"
+    gebco_stride: 4
+    research_preset: true
+    base_region: "taiwan_east_south"
+    default_actors: [PLAN, CCG, RESEARCH_SURVEY, FISHING]
+    context_sources:
+      land: [gshhg_2_3_7, natural_earth_5_1_2]
+      coastline: [gshhg_2_3_7, natural_earth_5_1_2]
+      labels: [natural_earth_5_1_2]
   taiwan_east_south:
     bbox_180: [119.0, 18.5, 124.5, 25.5]
     purpose: "Taiwan east and south, including the Luzon Strait"

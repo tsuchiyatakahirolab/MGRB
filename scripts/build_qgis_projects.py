@@ -516,7 +516,7 @@ def _build_layout(
 
     legend = QgsLayoutItemLegend(layout)
     legend.setLinkedMap(map_item)
-    legend.setTitle("Public base")
+    legend.setTitle(spec.get("legend_title", "Public base"))
     legend.setAutoUpdateModel(False)
     legend.model().rootGroup().clear()
     for layer in legend_layers:

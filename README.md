@@ -2,6 +2,10 @@
 
 **A reproducible, QGIS-ready geospatial base for maritime research.**
 
+MGRB v1 also provides one-command maritime evidence workspaces for the `taiwan-east` and
+`taiwan-south` presets. See the [maritime workspace guide](docs/MARITIME_RESEARCH_WORKSPACE.md)
+for evidence semantics, portable QGIS packaging, and CLI use.
+
 MGRB integrates public bathymetry, coastline and maritime-zone reference data into versioned, reproducible QGIS projects for local, regional and Pacific-wide research. It standardizes acquisition, clipping, projection, antimeridian handling, cartographic styling, provenance and citation so researchers can begin with a documented geospatial base rather than rebuilding one for each project.
 
 ## What v1.0 provides

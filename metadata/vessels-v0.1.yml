@@ -1,0 +1,195 @@
+schema_version: "0.1"
+registry_name: "MGRB China vessel/entity registry"
+records:
+  - entity_id: plan-jiangkai2-533
+    canonical_name: "PLAN frigate 533"
+    name_cn: null
+    name_en: null
+    aliases: ["hull 533", "Jiangkai II 533", "PLAN 533"]
+    former_names: []
+    actor_type: PLAN
+    vessel_class: "Jiangkai II-class frigate"
+    hull_number: "533"
+    IMO: null
+    MMSI: null
+    callsign: null
+    operator: "People's Liberation Army Navy"
+    home_port: null
+    length_m: null
+    tonnage: null
+    known_role: "naval surface combatant"
+    first_seen: "2025-07-02"
+    last_seen: "2025-07-06"
+    identity_confidence: DOCUMENTED
+    source_count: 1
+    primary_source: "Japan Joint Staff press release 2025-07-07"
+    source_refs: ["https://www.mod.go.jp/js/pdf/2025/p20250707_02.pdf"]
+    notes: "Official source identifies class and hull number; canonical personal name not asserted."
+  - entity_id: plan-jiangkai2-530
+    canonical_name: "PLAN frigate 530"
+    name_cn: null
+    name_en: null
+    aliases: ["hull 530", "Jiangkai II 530", "PLAN 530"]
+    former_names: []
+    actor_type: PLAN
+    vessel_class: "Jiangkai II-class frigate"
+    hull_number: "530"
+    IMO: null
+    MMSI: null
+    callsign: null
+    operator: "People's Liberation Army Navy"
+    home_port: null
+    length_m: null
+    tonnage: null
+    known_role: "naval surface combatant"
+    first_seen: "2025-07-02"
+    last_seen: "2025-07-06"
+    identity_confidence: DOCUMENTED
+    source_count: 1
+    primary_source: "Japan Joint Staff press release 2025-07-07"
+    source_refs: ["https://www.mod.go.jp/js/pdf/2025/p20250707_02.pdf"]
+    notes: "Official source identifies class and hull number; canonical personal name not asserted."
+  - entity_id: plan-dongdiao-796
+    canonical_name: "PLAN intelligence collection ship 796"
+    name_cn: null
+    name_en: null
+    aliases: ["Dongdiao 796", "hull 796", "PLAN 796"]
+    former_names: []
+    actor_type: PLAN
+    vessel_class: "Dongdiao-class intelligence collection ship"
+    hull_number: "796"
+    IMO: null
+    MMSI: null
+    callsign: null
+    operator: "People's Liberation Army Navy"
+    home_port: null
+    length_m: null
+    tonnage: null
+    known_role: "naval intelligence collection"
+    first_seen: "2025-05-04"
+    last_seen: "2025-05-05"
+    identity_confidence: DOCUMENTED
+    source_count: 1
+    primary_source: "Japan Joint Staff press release 2025-05-07"
+    source_refs: ["https://www.mod.go.jp/js/pdf/2025/p20250507_02.pdf"]
+    notes: null
+  - entity_id: plan-shandong-17
+    canonical_name: "Shandong"
+    name_cn: "山东舰"
+    name_en: "Shandong"
+    aliases: ["PLAN 17", "hull 17", "Shandong 17"]
+    former_names: []
+    actor_type: PLAN
+    vessel_class: "Kuznetsov-class aircraft carrier"
+    hull_number: "17"
+    IMO: null
+    MMSI: null
+    callsign: null
+    operator: "People's Liberation Army Navy"
+    home_port: null
+    length_m: null
+    tonnage: null
+    known_role: "aircraft carrier"
+    first_seen: "2025-06-17"
+    last_seen: "2025-06-23"
+    identity_confidence: DOCUMENTED
+    source_count: 1
+    primary_source: "Japan Joint Staff press release 2025-06-23"
+    source_refs: ["https://www.mod.go.jp/js/pdf/2025/p20250623_01.pdf"]
+    notes: null
+  - entity_id: ccg-2304
+    canonical_name: "China Coast Guard 2304"
+    name_cn: "中国海警2304"
+    name_en: "China Coast Guard 2304"
+    aliases: ["CCG 2304", "Baisha 2304"]
+    former_names: []
+    actor_type: CCG
+    vessel_class: null
+    hull_number: "2304"
+    IMO: null
+    MMSI: null
+    callsign: null
+    operator: "China Coast Guard"
+    home_port: null
+    length_m: null
+    tonnage: null
+    known_role: "coast guard patrol"
+    first_seen: "2026-06-01"
+    last_seen: "2026-06-01"
+    identity_confidence: DOCUMENTED
+    source_count: 1
+    primary_source: "Taiwan Coast Guard Administration release 2026-06-01"
+    source_refs: ["https://www.cga.gov.tw/GipOpen/wSite/ct?ctNode=650&mp=999&xItem=168001"]
+    notes: "Official Taiwan CGA release also gives the name Baisha."
+  - entity_id: ccg-2502
+    canonical_name: "China Coast Guard 2502"
+    name_cn: "中国海警2502"
+    name_en: "China Coast Guard 2502"
+    aliases: ["CCG 2502", "Daishan 2502"]
+    former_names: []
+    actor_type: CCG
+    vessel_class: null
+    hull_number: "2502"
+    IMO: null
+    MMSI: null
+    callsign: null
+    operator: "China Coast Guard"
+    home_port: null
+    length_m: null
+    tonnage: null
+    known_role: "coast guard patrol"
+    first_seen: "2026-06-01"
+    last_seen: "2026-06-01"
+    identity_confidence: DOCUMENTED
+    source_count: 1
+    primary_source: "Taiwan Coast Guard Administration release 2026-06-01"
+    source_refs: ["https://www.cga.gov.tw/GipOpen/wSite/ct?ctNode=650&mp=999&xItem=168001"]
+    notes: "Official Taiwan CGA release also gives the name Daishan."
+  - entity_id: research-dongfanghong-3
+    canonical_name: "Dong Fang Hong 3"
+    name_cn: "东方红3"
+    name_en: "Dong Fang Hong 3"
+    aliases: ["Dongfanghong 3", "Dong Fang Hong No. 3"]
+    former_names: []
+    actor_type: RESEARCH_SURVEY
+    vessel_class: "oceanographic research vessel"
+    hull_number: null
+    IMO: null
+    MMSI: null
+    callsign: null
+    operator: null
+    home_port: null
+    length_m: null
+    tonnage: null
+    known_role: "marine scientific research"
+    first_seen: "2022-06-04"
+    last_seen: "2022-06-04"
+    identity_confidence: DOCUMENTED
+    source_count: 1
+    primary_source: "Japan Ministry of Foreign Affairs release 2022-06-04"
+    source_refs: ["https://www.mofa.go.jp/mofaj/press/release/press1_000909.html"]
+    notes: "Actor is research/survey; no government or militia attribution is inferred."
+  - entity_id: fishing-yuenanao-31067
+    canonical_name: "Yue Nan Ao 31067"
+    name_cn: "粤南澳31067"
+    name_en: "Yue Nan Ao 31067"
+    aliases: ["Yuenanao 31067"]
+    former_names: []
+    actor_type: FISHING
+    vessel_class: "fishing vessel"
+    hull_number: "31067"
+    IMO: null
+    MMSI: null
+    callsign: null
+    operator: null
+    home_port: null
+    length_m: null
+    tonnage: null
+    known_role: "ordinary fishing vessel"
+    first_seen: "2025-09-12"
+    last_seen: "2025-09-14"
+    identity_confidence: DOCUMENTED
+    source_count: 1
+    primary_source: "Taiwan Coast Guard Administration clarification 2025-09-16"
+    source_refs: ["https://www.cga.gov.tw/GipOpen/wSite/ct?ctNode=10547&mp=9994&xItem=165919"]
+    notes: "No distant-water or maritime-militia status is asserted."

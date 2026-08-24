@@ -1,0 +1,9 @@
+timestamp,latitude,longitude,vessel_name,MMSI,source_record_id
+2025-01-01T00:00:00Z,23.0000,122.0000,China Coast Guard 2304,,synthetic-1
+2025-01-01T00:10:00Z,23.0100,122.0100,China Coast Guard 2304,,synthetic-2
+2025-01-01T00:20:00Z,40.0000,150.0000,China Coast Guard 2304,,synthetic-impossible-jump
+2025-01-01T10:00:00Z,23.0200,122.0200,China Coast Guard 2304,,synthetic-large-gap
+2025-01-01T10:00:00Z,23.0200,122.0200,China Coast Guard 2304,,synthetic-large-gap
+,23.0300,122.0300,China Coast Guard 2304,,synthetic-missing-time
+2025-01-01T10:10:00Z,95.0000,122.0400,China Coast Guard 2304,,synthetic-invalid-coordinate
+2025-01-01T10:20:00Z,23.0400,122.0400,China Coast Guard 2304,123,synthetic-malformed-mmsi
