@@ -1,0 +1,7 @@
+actor_type,crosswalk_entities,attempted,successfully_searched,exact_identifier_matches,strong_matches,ambiguous_candidates,no_matches_in_searched_interface,authentication_blocked_or_unsupported_identifier,match_percentage_of_all_entities,scope_note
+PLAN,4,4,0,0,0,0,0,4,0.00,Exact matches are against the GFW Fishing vessels v3 bulk archive only; absence is not evidence of no AIS transmission.
+CCG,29,29,0,0,0,0,0,29,0.00,Exact matches are against the GFW Fishing vessels v3 bulk archive only; absence is not evidence of no AIS transmission.
+RESEARCH_SURVEY,13,13,8,0,0,0,8,5,0.00,Exact matches are against the GFW Fishing vessels v3 bulk archive only; absence is not evidence of no AIS transmission.
+FISHING,0,0,0,0,0,0,0,0,0.00,Exact matches are against the GFW Fishing vessels v3 bulk archive only; absence is not evidence of no AIS transmission.
+MARITIME_MILITIA,149,149,145,17,0,0,128,4,11.41,Exact matches are against the GFW Fishing vessels v3 bulk archive only; absence is not evidence of no AIS transmission.
+OTHER,0,0,0,0,0,0,0,0,0.00,Exact matches are against the GFW Fishing vessels v3 bulk archive only; absence is not evidence of no AIS transmission.

@@ -107,3 +107,16 @@ license, attribution, checksum, schema version, and transformation lineage.
 5. Explicit uncertainty and evidence-type semantics.
 6. No raw licensed, partner, private, or collaborator data in the repository.
 7. Provenance manifest linking every derivative to source artifact hashes.
+
+## R3C correction to GFW priorities
+
+- **P0 remains:** checksum-pinned GFW Zenodo fishing identity and monthly aggregate
+  archives. They contain no individual positions.
+- **P1 after owner authentication:** GFW API v3 vessel identity and events, plus a
+  supported account-gated UI export workflow if its terms and repeatability pass.
+- **P2:** interactive track display, Deep-Sea Mining Watch, SAR, and VIIRS as
+  reference/detection capabilities rather than individual-track defaults.
+- **REJECT for production automation now:** undocumented scraping, session/token
+  extraction, or treating gridded presence as individual tracks.
+
+No production connector is implemented by R3C.

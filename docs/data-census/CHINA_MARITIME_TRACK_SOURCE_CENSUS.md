@@ -214,3 +214,15 @@ See also:
 - `RETRIEVAL_TEST_RESULTS.csv` / `.json`
 - `COVERAGE_GAPS.md`
 - `R3_CONNECTOR_PRIORITY.md`
+
+## R3C GFW track-access correction
+
+The targeted R3C audit separates GFW's interfaces. The versioned Zenodo archives
+remain reproducible P0 identity/aggregate inputs, but are not individual tracks.
+API v3 vessel identity and event endpoints returned HTTP 401 without an
+owner-supplied Bearer token. GFW documentation describes individual track display
+and account-gated CSV/GeoJSON export; R3C did not retrieve those files. Therefore
+the earlier statement that the *tested public archives* lack point tracks remains
+correct, but it must not be generalized to say that all GFW interfaces lack an
+individual-track export. Exact counts and status distinctions are in
+`r3c-gfw/R3_CENSUS_CORRECTIONS.md`.
