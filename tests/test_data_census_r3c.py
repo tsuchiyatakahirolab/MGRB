@@ -215,6 +215,12 @@ def test_stratified_sample_and_taiwan_metrics_are_honest() -> None:
     assert all(row["individual_positions_usable"] == "NO" for row in taiwan)
     assert sum(int(row["retrieved_position_count"]) for row in taiwan) == 0
     assert all(row["geographic_intersection_confirmed"] == "NO" for row in taiwan)
+    recent_summary = [
+        row
+        for row in taiwan
+        if any(2022 <= int(year) <= 2026 for year in row["available_bulk_summary_years"].split(";"))
+    ]
+    assert len(recent_summary) == 16
 
 
 def test_updated_census_referential_integrity_and_interface_rows() -> None:

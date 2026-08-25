@@ -52,9 +52,9 @@ no-matches are no-matches only in this versioned fishing-vessel archive.
    GeoJSON tracks 0. CSV/GeoJSON export is officially documented but remained
    authentication-blocked for all 17 matches.
 5. **Real position records retrieved:** 0.
-6. **Taiwan/East Asia intersection, 2022–2026:** 0 confirmed. All 17 matched
-   AMTI-listed vessels are plausibly relevant, but the archive has no coordinates,
-   so geographic intersection was not testable.
+6. **Taiwan/East Asia intersection, 2022–2026:** 0 confirmed. Sixteen of the 17
+   matches have at least one annual archive summary in 2022–2024, but those rows
+   have no coordinates, so geographic intersection was not testable.
 7. **Richest public research/survey track:** no research vessel matched GFW in R3C.
    The existing R3 PANGAEA Xue Long record remains the richest verified open series
    in this census at 3,186 positions (2012), outside the R3C period.
