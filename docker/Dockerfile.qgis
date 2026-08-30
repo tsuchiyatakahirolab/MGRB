@@ -15,6 +15,6 @@ RUN apt-get update \
 
 WORKDIR /workspace
 COPY . /workspace
-ENV PYTHONPATH=/workspace
+ENV PYTHONPATH=/workspace:/usr/share/qgis/python:/usr/lib/python3/dist-packages
 
 CMD ["python3", "scripts/qgis_smoke.py"]
