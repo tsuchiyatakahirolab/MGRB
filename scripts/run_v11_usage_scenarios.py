@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Run bounded public-data v1.1 research workflows and record usability evidence."""
 
 from __future__ import annotations
