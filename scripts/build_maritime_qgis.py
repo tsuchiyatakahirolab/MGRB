@@ -9,9 +9,14 @@ import gc
 import json
 import os
 import shutil
+import sys
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -51,7 +56,6 @@ from mgrb.verification import (
 )
 from scripts import build_qgis_projects as carto
 
-ROOT = Path(__file__).resolve().parents[1]
 ACTOR_COLORS = {
     "PLAN": "#9e2f2f",
     "CCG": "#d07823",

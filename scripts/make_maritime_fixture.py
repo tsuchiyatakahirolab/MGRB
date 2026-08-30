@@ -5,13 +5,17 @@ from __future__ import annotations
 
 import json
 import shutil
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from mgrb.research_package import ResearchBuildRequest, prepare_research_package
 from scripts.make_qgis_fixture import OUT as BASE_FIXTURE
 from scripts.make_qgis_fixture import main as make_base_fixture
 
-ROOT = Path(__file__).resolve().parents[1]
 BASE_TARGET = ROOT / "data" / "derived" / "taiwan-local-canonical"
 PACKAGE_ROOT = ROOT / "outputs" / "maritime-fixture"
 BUILD_ID = "ci-synthetic-maritime-workspace"
