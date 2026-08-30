@@ -13,16 +13,18 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from mgrb.research_package import ResearchBuildRequest, prepare_research_package
-from scripts.make_qgis_fixture import OUT as BASE_FIXTURE
-from scripts.make_qgis_fixture import main as make_base_fixture
 
+BASE_FIXTURE = ROOT / "outputs/qgis-fixture/derived/test_region"
 BASE_TARGET = ROOT / "data" / "derived" / "taiwan-local-canonical"
 PACKAGE_ROOT = ROOT / "outputs" / "maritime-fixture"
 BUILD_ID = "ci-synthetic-maritime-workspace"
 
 
 def main() -> None:
-    make_base_fixture()
+    if not (BASE_FIXTURE / "project-spec.json").exists():
+        from scripts.make_qgis_fixture import main as make_base_fixture
+
+        make_base_fixture()
     BASE_TARGET.mkdir(parents=True, exist_ok=True)
     shutil.copy2(BASE_FIXTURE / "base.gpkg", BASE_TARGET / "base.gpkg")
     shutil.copy2(BASE_FIXTURE / "bathymetry.tif", BASE_TARGET / "bathymetry.tif")
