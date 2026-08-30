@@ -1,10 +1,16 @@
 import hashlib
+import importlib.util
 import io
 import urllib.error
+from pathlib import Path
 
 import pytest
 
-from scripts import prepare_owner_review
+MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "prepare_owner_review.py"
+SPEC = importlib.util.spec_from_file_location("prepare_owner_review", MODULE_PATH)
+assert SPEC is not None and SPEC.loader is not None
+prepare_owner_review = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(prepare_owner_review)
 
 
 def test_download_uses_pinned_fallback_and_verifies_hash(tmp_path, monkeypatch):
