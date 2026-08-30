@@ -44,6 +44,66 @@ regions:
       land: [gshhg_2_3_7, natural_earth_5_1_2]
       coastline: [gshhg_2_3_7, natural_earth_5_1_2]
       labels: [natural_earth_5_1_2]
+  taiwan-strait:
+    bbox_180: [117.5, 21.2, 122.5, 26.6]
+    purpose: "Taiwan Strait and adjacent coasts"
+    title: "Taiwan Strait"
+    display_crs: "+proj=laea +lat_0=23.9 +lon_0=120 +datum=WGS84 +units=m +no_defs +type=crs"
+    layout_scale: "local"
+    profile: "local"
+    gebco_stride: 4
+    research_preset: true
+    base_region: "taiwan-strait"
+    base_build_id: "taiwan-strait-base"
+    context_sources:
+      land: [gshhg_2_3_7, natural_earth_5_1_2]
+      coastline: [gshhg_2_3_7, natural_earth_5_1_2]
+      labels: [natural_earth_5_1_2]
+  bashi-luzon-strait:
+    bbox_180: [118.5, 17.2, 124.8, 23.2]
+    purpose: "Bashi Channel, Luzon Strait, Batanes and adjacent waters"
+    title: "Bashi / Luzon Strait"
+    display_crs: "+proj=laea +lat_0=20.2 +lon_0=121.65 +datum=WGS84 +units=m +no_defs +type=crs"
+    layout_scale: "local"
+    profile: "local"
+    gebco_stride: 4
+    research_preset: true
+    base_region: "bashi-luzon-strait"
+    base_build_id: "bashi-luzon-strait-base"
+    context_sources:
+      land: [gshhg_2_3_7, natural_earth_5_1_2]
+      coastline: [gshhg_2_3_7, natural_earth_5_1_2]
+      labels: [natural_earth_5_1_2]
+  east-china-sea:
+    bbox_180: [117.0, 23.0, 132.5, 35.5]
+    purpose: "East China Sea, Ryukyu arc and adjacent continental margin"
+    title: "East China Sea"
+    display_crs: "+proj=laea +lat_0=29 +lon_0=125 +datum=WGS84 +units=m +no_defs +type=crs"
+    layout_scale: "regional"
+    profile: "regional"
+    gebco_stride: 12
+    research_preset: true
+    base_region: "east-china-sea"
+    base_build_id: "east-china-sea-base"
+    context_sources:
+      land: [gshhg_2_3_7, natural_earth_5_1_2]
+      coastline: [gshhg_2_3_7, natural_earth_5_1_2]
+      labels: [natural_earth_5_1_2]
+  south-china-sea:
+    bbox_180: [99.0, -1.0, 123.5, 25.5]
+    purpose: "South China Sea and adjacent continental and island-arc context"
+    title: "South China Sea"
+    display_crs: "+proj=laea +lat_0=12 +lon_0=112 +datum=WGS84 +units=m +no_defs +type=crs"
+    layout_scale: "regional"
+    profile: "regional"
+    gebco_stride: 12
+    research_preset: true
+    base_region: "south-china-sea"
+    base_build_id: "south-china-sea-base"
+    context_sources:
+      land: [natural_earth_5_1_2, gshhg_2_3_7]
+      coastline: [natural_earth_5_1_2, gshhg_2_3_7]
+      labels: [natural_earth_5_1_2]
   taiwan_east_south:
     bbox_180: [119.0, 18.5, 124.5, 25.5]
     purpose: "Taiwan east and south, including the Luzon Strait"

@@ -13,3 +13,11 @@
 - [ ] Provenance manifest and SHA-256 hashes generated.
 - [ ] `CITATION.cff`, changelog and release notes updated.
 - [ ] Release archived with a persistent DOI.
+- [ ] Local product UI launches from a fresh clone without private state.
+- [ ] Required area, background and maritime-layer selectors pass UI tests.
+- [ ] CSV/GeoJSON/GeoPackage import, schema confirmation and QC pass.
+- [ ] Public PANGAEA demo produces paper, media, journal and portable QGIS outputs.
+- [ ] Generated QGZ reopens from a copied package and `mgrb verify` passes.
+- [ ] Working tree, tracked files, reachable Git history and review assets pass the
+  release-security/private-data audit.
+- [ ] Owner approves the release-review screenshots and public demo maps.

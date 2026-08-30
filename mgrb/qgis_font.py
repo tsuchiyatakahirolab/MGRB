@@ -24,7 +24,9 @@ def register_bundled_fonts(repository_root: Path) -> dict[str, Any]:
         families = list(QFontDatabase.applicationFontFamilies(font_id))
         if FONT_FAMILY not in families:
             raise RuntimeError(f"Unexpected family in bundled font {path}: {families}")
-        registered.append({"path": path.relative_to(repository_root).as_posix(), "families": families})
+        registered.append(
+            {"path": path.relative_to(repository_root).as_posix(), "families": families}
+        )
 
     font = QFont(FONT_FAMILY, 12)
     resolved_family = QFontInfo(font).family()
@@ -32,10 +34,7 @@ def register_bundled_fonts(repository_root: Path) -> dict[str, Any]:
         raise RuntimeError(
             f"Bundled font substitution failed: requested {FONT_FAMILY}, got {resolved_family}"
         )
-    required = (
-        "MGRB v1.0 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-        " °−–·,;/()"
-    )
+    required = "MGRB v1.0 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz °−–·,;/()"
     missing = [character for character in required if not QFontMetricsF(font).inFont(character)]
     if missing:
         raise RuntimeError(f"Bundled font lacks required release glyphs: {missing!r}")
@@ -52,7 +51,11 @@ def glyph_fingerprint(font: Any, text: str) -> str:
     from qgis.PyQt.QtCore import Qt
     from qgis.PyQt.QtGui import QColor, QImage, QPainter
 
-    image_format = QImage.Format.Format_ARGB32 if hasattr(QImage.Format, "Format_ARGB32") else QImage.Format_ARGB32
+    image_format = (
+        QImage.Format.Format_ARGB32
+        if hasattr(QImage.Format, "Format_ARGB32")
+        else QImage.Format_ARGB32
+    )
     image = QImage(256, 64, image_format)
     image.fill(QColor("white"))
     painter = QPainter(image)

@@ -226,3 +226,17 @@ the earlier statement that the *tested public archives* lack point tracks remain
 correct, but it must not be generalized to say that all GFW interfaces lack an
 individual-track export. Exact counts and status distinctions are in
 `r3c-gfw/R3_CENSUS_CORRECTIONS.md`.
+
+## R3C-B authenticated follow-up (2026-08-26)
+
+The authentication blocker above is historical. Owner-authorized official API
+queries now cover all 195 entities, with full Vessel Search pagination. There are
+179 exact/strong identifier/identity matches (814 GFW identity segments) and
+57,922 event records across 173 entities. These are identity and event evidence,
+not raw individual tracks; actual raw positions retrieved remain zero. The 17
+previous bulk matches all resolve, and 26 of the previous 42 auth-unverified
+entities now resolve under the stated rules. UI track/CSV/GeoJSON export validation
+still requires manual owner evidence. See the local
+[R3C-B owner review](r3cb-gfw-auth/R3CB_OWNER_REVIEW.md) for hashes, caveats, AOI
+event-position tests and separately recorded interface licenses. The historical
+R3/R3C snapshots are retained, not rewritten as authenticated results.

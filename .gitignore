@@ -1,6 +1,7 @@
 .venv/
 .cache/
 .tmp/
+.local/
 .tools/
 mgrb.egg-info/
 __pycache__/

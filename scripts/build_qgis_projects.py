@@ -163,12 +163,8 @@ def _style_raster(layer: QgsRasterLayer, theme: dict, profile: dict) -> None:
             for value, key, label in DEPTH_BREAKS
         ]
         + [
-            QgsColorRampShader.ColorRampItem(
-                1.0, QColor(_color(theme, "land.fill")), "Land"
-            ),
-            QgsColorRampShader.ColorRampItem(
-                9000.0, QColor(_color(theme, "land.fill")), "Land"
-            ),
+            QgsColorRampShader.ColorRampItem(1.0, QColor(_color(theme, "land.fill")), "Land"),
+            QgsColorRampShader.ColorRampItem(9000.0, QColor(_color(theme, "land.fill")), "Land"),
         ]
     )
     shader = QgsRasterShader()
@@ -176,8 +172,7 @@ def _style_raster(layer: QgsRasterLayer, theme: dict, profile: dict) -> None:
     renderer = QgsSingleBandPseudoColorRenderer(layer.dataProvider(), 1, shader)
     layer.setRenderer(renderer)
     layer.setOpacity(
-        float(profile.get("bathymetry_opacity", 1.0))
-        * float(_color(theme, "bathymetry.opacity"))
+        float(profile.get("bathymetry_opacity", 1.0)) * float(_color(theme, "bathymetry.opacity"))
     )
 
 
@@ -215,8 +210,7 @@ def _style_contours(layer: QgsVectorLayer, theme: dict, profile: dict) -> None:
         categories.append(QgsRendererCategory(float(level), symbol, f"{abs(int(level)):,} m"))
     layer.setRenderer(QgsCategorizedSymbolRenderer("depth_m", categories))
     layer.setOpacity(
-        float(profile.get("contour_opacity", 1.0))
-        * float(_color(theme, "contours.opacity"))
+        float(profile.get("contour_opacity", 1.0)) * float(_color(theme, "contours.opacity"))
     )
 
 
@@ -483,12 +477,8 @@ def _build_layout(
                 _color(theme, "layout.footer"),
             )
         )
-        subtitle.attemptMove(
-            QgsLayoutPoint(map_x, 7.0, QgsUnitTypes.LayoutMillimeters)
-        )
-        subtitle.attemptResize(
-            QgsLayoutSize(map_width, 6, QgsUnitTypes.LayoutMillimeters)
-        )
+        subtitle.attemptMove(QgsLayoutPoint(map_x, 7.0, QgsUnitTypes.LayoutMillimeters))
+        subtitle.attemptResize(QgsLayoutSize(map_width, 6, QgsUnitTypes.LayoutMillimeters))
         subtitle.setZValue(100)
         layout.addLayoutItem(subtitle)
 
@@ -544,6 +534,7 @@ def _build_layout(
     legend.setTitle(spec.get("legend_title", "Public base"))
     legend.setAutoUpdateModel(False)
     legend.model().rootGroup().clear()
+
     def add_legend_entry(parent, layer, label: str) -> None:
         node = parent.addLayer(layer)
         if label:
@@ -594,9 +585,7 @@ def _build_layout(
             QgsUnitTypes.LayoutMillimeters,
         )
     )
-    legend.attemptResize(
-        QgsLayoutSize(legend_width, legend_height, QgsUnitTypes.LayoutMillimeters)
-    )
+    legend.attemptResize(QgsLayoutSize(legend_width, legend_height, QgsUnitTypes.LayoutMillimeters))
     if bool(profile.get("legend_enabled", True)):
         layout.addLayoutItem(legend)
 
@@ -608,9 +597,7 @@ def _build_layout(
         scale_bar.applyDefaultSize()
         scale_bar.setUnits(QgsUnitTypes.DistanceKilometers)
         scale_bar.setUnitLabel("km")
-        scale_bar.setUnitsPerSegment(
-            select_scale_interval_km(map_item.extent().width() / 1000.0)
-        )
+        scale_bar.setUnitsPerSegment(select_scale_interval_km(map_item.extent().width() / 1000.0))
         scale_bar.setNumberOfSegments(2)
         scale_bar.setNumberOfSegmentsLeft(0)
         if hasattr(scale_bar, "setTextFormat"):
@@ -625,9 +612,7 @@ def _build_layout(
     if build.get("visible_footer", True):
         footer = QgsLayoutItemLabel(layout)
         source_text = "; ".join(source_names[:2])
-        footer.setText(
-            f"MGRB v{build['mgrb_version']} · {build['build_id']} · {source_text}"
-        )
+        footer.setText(f"MGRB v{build['mgrb_version']} · {build['build_id']} · {source_text}")
         footer.setTextFormat(
             _layout_text_format(
                 QFont(FONT_FAMILY, round(float(layout_cfg["footer_pt"]))),
@@ -691,7 +676,9 @@ def _raster_coverage_qa(
             valid += 1
             frame_longitudes.append(longitude)
             frame_latitudes.append(latitude)
-            if not (xmin - 1e-5 <= longitude <= xmax + 1e-5 and ymin - 1e-5 <= latitude <= ymax + 1e-5):
+            if not (
+                xmin - 1e-5 <= longitude <= xmax + 1e-5 and ymin - 1e-5 <= latitude <= ymax + 1e-5
+            ):
                 outside.append([longitude, latitude])
     projection_edges_expected = longitude_convention == "360"
     declared_present = (
@@ -1040,9 +1027,7 @@ def build_one(spec_path: Path, output_dir: Path, review_dir: Path) -> dict:
         build["cartographic_profile"],
     )
     coverage_checks["display_warp"] = display_warp_checks
-    coverage_checks["passed"] = bool(
-        coverage_checks["passed"] and display_warp_checks["passed"]
-    )
+    coverage_checks["passed"] = bool(coverage_checks["passed"] and display_warp_checks["passed"])
     coverage_checks["exposed_raster_footprint"] = not coverage_checks["passed"]
     if not coverage_checks["passed"]:
         raise RuntimeError(f"Raster coverage QA failed for {build_id}: {coverage_checks}")
@@ -1074,7 +1059,9 @@ def build_one(spec_path: Path, output_dir: Path, review_dir: Path) -> dict:
             raise RuntimeError(f"{kind.upper()} export failed for {build_id}: {result}")
     text_render_checks = _export_text_qa(outputs["png"], spec["layout"])
     if not text_render_checks["passed"]:
-        raise RuntimeError(f"Missing-glyph/tofu render QA failed for {build_id}: {text_render_checks}")
+        raise RuntimeError(
+            f"Missing-glyph/tofu render QA failed for {build_id}: {text_render_checks}"
+        )
 
     lineage_json = json.dumps(build, sort_keys=True)
     png_image = QImage(str(outputs["png"]))

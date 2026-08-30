@@ -48,9 +48,7 @@ def resolve_layout_geometry(
             orientation = "square"
         resolved["orientation"] = orientation
         resolved["map_area_ratio"] = (
-            float(layout["map_mm"][2])
-            * float(layout["map_mm"][3])
-            / (page_width * page_height)
+            float(layout["map_mm"][2]) * float(layout["map_mm"][3]) / (page_width * page_height)
         )
         return resolved
 

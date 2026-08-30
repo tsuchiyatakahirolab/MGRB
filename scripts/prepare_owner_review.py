@@ -260,6 +260,7 @@ def main() -> None:
     parser.add_argument("--theme", default="canonical")
     parser.add_argument("--output-name")
     parser.add_argument("--no-visible-footer", action="store_true")
+    parser.add_argument("--regions-config", type=Path, default=ROOT / "config/regions.yml")
     args = parser.parse_args()
     if args.force and DERIVED.exists():
         gitkeep = DERIVED / ".gitkeep"
@@ -307,7 +308,7 @@ def main() -> None:
     )
 
     paths = locate_inputs(extracted)
-    regions = load_regions(ROOT / "config/regions.yml")
+    regions = load_regions(args.regions_config)
     profiles = load_profiles(ROOT / "config/profiles.yml")
     layouts = load_yaml(ROOT / "config/layouts.yml")["layouts"]
     product = load_yaml(ROOT / "config/product.yml")["product"]
@@ -353,9 +354,7 @@ def main() -> None:
             land_source = "natural_earth_5_1_2"
         theme = resolve_theme(theme_name, ROOT / "config/themes")
         coverage_bbox = buffered_bbox(region.bbox, region.longitude_convention, region.profile)
-        vector_bbox = buffered_vector_bbox(
-            region.bbox, region.longitude_convention, region.profile
-        )
+        vector_bbox = buffered_vector_bbox(region.bbox, region.longitude_convention, region.profile)
         vector_convention = region.longitude_convention
         if region.longitude_convention == "360" and region.bbox[2] - region.bbox[0] >= 180:
             vector_bbox = (-180.0, -89.0, 180.0, 89.0)

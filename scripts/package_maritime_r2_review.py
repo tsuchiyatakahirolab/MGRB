@@ -34,9 +34,7 @@ def journal_preview(source: Path, output: Path, width: int = 945) -> None:
     with Image.open(source) as image:
         image = image.convert("RGB")
         height = round(image.height * width / image.width)
-        image.resize((width, height), Image.Resampling.LANCZOS).save(
-            output, optimize=True
-        )
+        image.resize((width, height), Image.Resampling.LANCZOS).save(output, optimize=True)
 
 
 def contact_sheet(root: Path, output: Path) -> None:
@@ -116,8 +114,7 @@ def package_review(root: Path, timings: dict[str, float | None]) -> dict:
         _portable_zip(root / package_name, zip_dir / f"{package_name}.zip")
     contact_sheet(root, root / "contact-sheet.png")
     cases = {
-        key: _case_summary(root, package_name, timings.get(key))
-        for key, package_name, _ in CASES
+        key: _case_summary(root, package_name, timings.get(key)) for key, package_name, _ in CASES
     }
     summary = {
         "schema": "mgrb-maritime-owner-review-r2-1.0",

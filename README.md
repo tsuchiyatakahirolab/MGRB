@@ -8,6 +8,11 @@ for evidence semantics, portable QGIS packaging, and CLI use.
 
 MGRB integrates public bathymetry, coastline and maritime-zone reference data into versioned, reproducible QGIS projects for local, regional and Pacific-wide research. It standardizes acquisition, clipping, projection, antimeridian handling, cartographic styling, provenance and citation so researchers can begin with a documented geospatial base rather than rebuilding one for each project.
 
+The v1.0 product workflow is deliberately small: select an area, background and maritime
+layers; optionally drop position data; preview; then build publication, media and portable
+QGIS research outputs. MGRB asks for research choices and takes responsibility for routine
+CRS, source, resolution, clipping, antimeridian, label, layout and attribution decisions.
+
 ## What v1.0 provides
 
 - Public-source registry with version, citation, licence and acquisition policy.
@@ -23,12 +28,14 @@ MGRB integrates public bathymetry, coastline and maritime-zone reference data in
 - Provenance manifests with SHA-256 hashes, MGRB version and Git commit.
 - CI templates for Python tests and headless QGIS validation.
 - `CITATION.cff` and version-specific citation policy.
+- A loopback-only local UI with drag/drop, schema confirmation and compact evidence QC.
+- Portable QGIS research packages with paper, media and journal-width outputs.
 
 ## Design principle
 
 MGRB keeps canonical upstream geometry and data separate from generated derivatives. A derived layer is reproducible from a documented source, source version, transformation and MGRB release. Maritime-zone geometry is never assigned legal meaning solely because it appears in a global reference dataset.
 
-## Quick start
+## Quick start: local product UI
 
 ```bash
 python -m venv .venv
@@ -36,7 +43,19 @@ source .venv/bin/activate      # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -e .[dev]
 mgrb doctor
 pytest -q
+mgrb ui
 ```
+
+The browser interface runs locally on `127.0.0.1`. Choose a research area, background and
+maritime reference layers, drop or select a CSV/GeoJSON/GeoPackage, inspect the schema/QC,
+and select **Build Research Package**. User inputs remain local and generated products are
+written under `build/products/` by default. See [the product UI guide](docs/product-ui.md).
+
+Supported presets include Taiwan East, Taiwan South, Taiwan Strait, Bashi/Luzon Strait,
+East China Sea, South China Sea, Western Pacific, Pacific-wide, and the public Xue Long demo.
+Custom WGS84 bounding boxes receive an adaptive CRS, scale profile and page orientation.
+
+## CLI quick start
 
 List the configured regions:
 
@@ -52,6 +71,14 @@ selected without editing Python or QML:
 mgrb build taiwan_east_south --profile local --theme canonical
 ```
 
+For a complete maritime research package with local user positions:
+
+```bash
+mgrb build taiwan-east --background bathymetry \
+  --maritime-layers eez_reference,territorial_sea \
+  --input vessel.csv --output-name taiwan-study
+```
+
 Then generate the QGIS project from a QGIS-enabled environment:
 
 ```bash
@@ -61,6 +88,10 @@ QT_QPA_PLATFORM=offscreen python scripts/build_qgis_projects.py
 The project generator writes real `.qgz` files to `qgis-projects/generated/` and
 PDF, PNG, SVG, journal-width previews, manifests, and a contact sheet to
 `build/owner-review/`.
+
+The reproducible v1.0 public demo uses 3,186 Xue Long positions published by PANGAEA under
+CC BY 3.0. Its exact command, DOI, and licence are documented in
+[the public demo guide](docs/public-demo.md).
 
 ## Canonical cartography gate build
 

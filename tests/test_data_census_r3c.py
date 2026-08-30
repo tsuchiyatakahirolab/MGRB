@@ -74,9 +74,7 @@ def test_all_195_entities_receive_bounded_resolution_status() -> None:
     resolution = read_csv(R3C / "GFW_VESSEL_RESOLUTION.csv")
     assert len(crosswalk) == len(resolution) == 195
     assert len({row["vessel_key"] for row in crosswalk}) == 195
-    assert {row["vessel_key"] for row in crosswalk} == {
-        row["mgrb_entity_id"] for row in resolution
-    }
+    assert {row["vessel_key"] for row in crosswalk} == {row["mgrb_entity_id"] for row in resolution}
     assert all(row["attempted"] == "YES" for row in resolution)
     assert all(row["resolution_status"] in RETRIEVAL_STATUSES for row in resolution)
     assert Counter(row["resolution_status"] for row in resolution) == {
@@ -129,7 +127,14 @@ def test_actor_type_and_counts_are_preserved() -> None:
     }
     assert all(expected_actor[row["mgrb_entity_id"]] == row["actor_type"] for row in resolution)
     summary = {row["actor_type"]: row for row in read_csv(R3C / "GFW_ACTOR_COVERAGE_SUMMARY.csv")}
-    assert set(summary) == {"PLAN", "CCG", "RESEARCH_SURVEY", "FISHING", "MARITIME_MILITIA", "OTHER"}
+    assert set(summary) == {
+        "PLAN",
+        "CCG",
+        "RESEARCH_SURVEY",
+        "FISHING",
+        "MARITIME_MILITIA",
+        "OTHER",
+    }
     assert {actor: int(row["crosswalk_entities"]) for actor, row in summary.items()} == {
         "PLAN": 4,
         "CCG": 29,
@@ -139,7 +144,10 @@ def test_actor_type_and_counts_are_preserved() -> None:
         "OTHER": 0,
     }
     assert int(summary["MARITIME_MILITIA"]["exact_identifier_matches"]) == 17
-    assert all(int(summary[actor]["exact_identifier_matches"]) == 0 for actor in ("PLAN", "CCG", "RESEARCH_SURVEY"))
+    assert all(
+        int(summary[actor]["exact_identifier_matches"]) == 0
+        for actor in ("PLAN", "CCG", "RESEARCH_SURVEY")
+    )
 
 
 def test_interface_access_classes_and_terms_are_not_flattened() -> None:
@@ -185,7 +193,9 @@ def test_track_and_event_statuses_make_no_unsupported_claim() -> None:
     assert {row["retrieval_status"] for row in tracks} <= RETRIEVAL_STATUSES
     assert {row["retrieval_status"] for row in events} <= RETRIEVAL_STATUSES
     assert sum(int(row["position_count"]) for row in tracks) == 0
-    assert not any(row["actual_download_success"] == "YES" and int(row["position_count"]) for row in tracks)
+    assert not any(
+        row["actual_download_success"] == "YES" and int(row["position_count"]) for row in tracks
+    )
     for row in tracks:
         if row["track_export_available"] == "YES":
             assert row["retrieval_status"] in {
@@ -247,7 +257,13 @@ def test_updated_census_referential_integrity_and_interface_rows() -> None:
     crosswalk = read_csv(CENSUS / "VESSEL_SOURCE_CROSSWALK.csv")
     referenced = {source for row in crosswalk for source in row["source_ids"].split(";") if source}
     assert referenced <= score_ids
-    assert sum(row["track_availability"].startswith("GFW bulk identity/activity match") for row in crosswalk) == 17
+    assert (
+        sum(
+            row["track_availability"].startswith("GFW bulk identity/activity match")
+            for row in crosswalk
+        )
+        == 17
+    )
 
 
 def test_no_private_or_licensed_track_data_entered_r3c() -> None:

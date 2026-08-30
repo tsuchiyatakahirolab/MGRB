@@ -11,7 +11,7 @@ It intentionally does **not** contain a `.git` directory. The owner should creat
 Target directory:
 
 ```text
-C:\Users\Windows\Projects\MGRB
+<repository-root>
 ```
 
 Back up or remove the existing incomplete directory first if it contains only `work\codex-v1-cartography`.
@@ -19,7 +19,7 @@ Back up or remove the existing incomplete directory first if it contains only `w
 Extract the contents of this package directly into:
 
 ```text
-C:\Users\Windows\Projects\MGRB
+<repository-root>
 ```
 
 After extraction, the directory should contain at least:
@@ -39,7 +39,7 @@ work\codex-v1-cartography\
 Open PowerShell in:
 
 ```text
-C:\Users\Windows\Projects\MGRB
+<repository-root>
 ```
 
 Run:
@@ -72,7 +72,7 @@ git rev-parse HEAD
 ```
 
 Expected:
-- repository root resolves to `C:\Users\Windows\Projects\MGRB`;
+- repository root resolves to the fresh clone's `<repository-root>`;
 - current branch is `main`;
 - `git rev-parse HEAD` returns a real SHA;
 - working tree is clean.

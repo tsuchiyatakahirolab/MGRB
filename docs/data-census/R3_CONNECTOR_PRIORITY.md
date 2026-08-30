@@ -120,3 +120,14 @@ license, attribution, checksum, schema version, and transformation lineage.
   extraction, or treating gridded presence as individual tracks.
 
 No production connector is implemented by R3C.
+
+## R3C-B authenticated evidence update (2026-08-26)
+
+Owner-authorized Vessel Search and Events API retrieval succeeded. This removes
+the authentication uncertainty for those two interfaces, not the need for a
+production integration decision or license review. The audit found identity and
+event geometry, with zero verified raw position records. UI-visible tracks and
+CSV/GeoJSON exports remain manual-validation pending. The PANGAEA Xue Long
+3,186-position public benchmark is unchanged. No production connector is
+implemented or authorized by this follow-up. See the local
+[R3C-B owner review](r3cb-gfw-auth/R3CB_OWNER_REVIEW.md).

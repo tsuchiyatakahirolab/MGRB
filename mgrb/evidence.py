@@ -65,6 +65,7 @@ CANONICAL_COLUMNS = (
     "attribution",
     "raw_record_reference",
     "processing_notes",
+    "source_segment_id",
     "build_id",
 )
 SEGMENT_COLUMNS = (
@@ -82,6 +83,7 @@ SEGMENT_COLUMNS = (
     "max_gap_seconds",
     "confidence",
     "source_set",
+    "source_segment_ids",
 )
 DEFAULT_ALIASES = {
     "latitude": ("latitude", "lat", "y"),
@@ -91,9 +93,10 @@ DEFAULT_ALIASES = {
     "MMSI": ("MMSI", "mmsi"),
     "IMO": ("IMO", "imo"),
     "hull_number": ("hull_number", "hull", "pennant"),
+    "source_segment_id": ("source_segment_id", "seg_id", "segment_id"),
 }
 GEOD = Geod(ellps="WGS84")
-DENSE_OBSERVED_SOURCE_TYPES = {"AIS", "PUBLIC_TRACK"}
+DENSE_OBSERVED_SOURCE_TYPES = {"AIS", "PUBLIC_TRACK", "USER_SUPPLIED"}
 
 
 @dataclass(frozen=True)
@@ -207,9 +210,7 @@ def normalize_evidence(
         result["longitude"] = result["longitude"].where(
             result["longitude"].notna(), frame.geometry.x
         )
-        result["latitude"] = result["latitude"].where(
-            result["latitude"].notna(), frame.geometry.y
-        )
+        result["latitude"] = result["latitude"].where(result["latitude"].notna(), frame.geometry.y)
     result["source_type"] = result["source_type"].fillna(source_type)
     result["source_name"] = result["source_name"].fillna(source_name)
     result["source_record_id"] = result["source_record_id"].fillna(
@@ -246,9 +247,7 @@ def normalize_evidence(
     result["latitude"] = pd.to_numeric(result["latitude"], errors="coerce")
     result["longitude"] = pd.to_numeric(result["longitude"], errors="coerce")
     geometry = [
-        Point(longitude, latitude)
-        if pd.notna(longitude) and pd.notna(latitude)
-        else None
+        Point(longitude, latitude) if pd.notna(longitude) and pd.notna(latitude) else None
         for longitude, latitude in zip(result["longitude"], result["latitude"], strict=False)
     ]
     normalized = gpd.GeoDataFrame(result, geometry=geometry, crs=4326)
@@ -286,36 +285,74 @@ def quality_control(
         return QualityControlResult(
             _empty_points(),
             _empty_points(),
-            pd.DataFrame(columns=["observation_id", "entity_id", "flag", "severity", "detail", "excluded"]),
+            pd.DataFrame(
+                columns=["observation_id", "entity_id", "flag", "severity", "detail", "excluded"]
+            ),
             pd.DataFrame(columns=["entity_id", "start_time", "end_time", "gap_seconds"]),
             _empty_segments(),
-            pd.DataFrame(columns=["entity_id", "actor_type", "observation_count", "first_seen", "last_seen", "flag_count"]),
+            pd.DataFrame(
+                columns=[
+                    "entity_id",
+                    "actor_type",
+                    "observation_count",
+                    "first_seen",
+                    "last_seen",
+                    "flag_count",
+                ]
+            ),
         )
-    frame["_source_order"] = frame.get("_source_order", pd.Series(range(len(frame)), index=frame.index))
+    frame["_source_order"] = frame.get(
+        "_source_order", pd.Series(range(len(frame)), index=frame.index)
+    )
     frame["_time"] = pd.to_datetime(frame["timestamp_start"], errors="coerce", utc=True)
     excluded_indices: set[Any] = set()
     flags: list[dict[str, object]] = []
 
     for index, row in frame.iterrows():
         latitude, longitude = row.get("latitude"), row.get("longitude")
-        if pd.isna(latitude) or pd.isna(longitude) or not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
-            _add_flag(flags, row, "INVALID_COORDINATE", "ERROR", "Coordinate is missing or outside WGS84 bounds", True)
+        if (
+            pd.isna(latitude)
+            or pd.isna(longitude)
+            or not (-90 <= latitude <= 90)
+            or not (-180 <= longitude <= 180)
+        ):
+            _add_flag(
+                flags,
+                row,
+                "INVALID_COORDINATE",
+                "ERROR",
+                "Coordinate is missing or outside WGS84 bounds",
+                True,
+            )
             excluded_indices.add(index)
         if pd.isna(row["_time"]):
-            _add_flag(flags, row, "MISSING_TIME", "ERROR", "No parseable observation timestamp", True)
+            _add_flag(
+                flags, row, "MISSING_TIME", "ERROR", "No parseable observation timestamp", True
+            )
             excluded_indices.add(index)
         if not str(row.get("entity_id") or "").strip():
-            _add_flag(flags, row, "MISSING_VESSEL_IDENTITY", "ERROR", "Entity resolution failed", True)
+            _add_flag(
+                flags, row, "MISSING_VESSEL_IDENTITY", "ERROR", "Entity resolution failed", True
+            )
             excluded_indices.add(index)
         for identifier in ("MMSI", "IMO"):
             if identifier_is_malformed(identifier, row.get(identifier)):
-                _add_flag(flags, row, f"MALFORMED_{identifier}", "ERROR", f"Malformed {identifier}", True)
+                _add_flag(
+                    flags, row, f"MALFORMED_{identifier}", "ERROR", f"Malformed {identifier}", True
+                )
                 excluded_indices.add(index)
         actor = str(row.get("actor_type") or "UNKNOWN")
         if actor not in ACTOR_TYPES:
             _add_flag(flags, row, "UNKNOWN_ACTOR_TYPE", "WARNING", actor, False)
         if str(row.get("observed_or_inferred") or "") not in OBSERVATION_STATES:
-            _add_flag(flags, row, "UNKNOWN_OBSERVATION_STATE", "ERROR", str(row.get("observed_or_inferred")), True)
+            _add_flag(
+                flags,
+                row,
+                "UNKNOWN_OBSERVATION_STATE",
+                "ERROR",
+                str(row.get("observed_or_inferred")),
+                True,
+            )
             excluded_indices.add(index)
 
     duplicate_mask = frame.duplicated(
@@ -323,16 +360,32 @@ def quality_control(
         keep="first",
     )
     for index in frame.index[duplicate_mask]:
-        _add_flag(flags, frame.loc[index], "DUPLICATE_OBSERVATION", "ERROR", "Exact canonical duplicate", True)
+        _add_flag(
+            flags,
+            frame.loc[index],
+            "DUPLICATE_OBSERVATION",
+            "ERROR",
+            "Exact canonical duplicate",
+            True,
+        )
         excluded_indices.add(index)
 
     gaps: list[dict[str, object]] = []
-    for entity_id, source_group in frame.sort_values("_source_order").groupby("entity_id", dropna=False):
+    for entity_id, source_group in frame.sort_values("_source_order").groupby(
+        "entity_id", dropna=False
+    ):
         previous_time = None
         for _, row in source_group.iterrows():
             current = row["_time"]
             if previous_time is not None and pd.notna(current) and current < previous_time:
-                _add_flag(flags, row, "TIMESTAMP_DISORDER", "WARNING", "Input order decreases in time", False)
+                _add_flag(
+                    flags,
+                    row,
+                    "TIMESTAMP_DISORDER",
+                    "WARNING",
+                    "Input order decreases in time",
+                    False,
+                )
             if pd.notna(current):
                 previous_time = current
 
@@ -358,7 +411,14 @@ def quality_control(
             )
             speed_knots = distance_m / gap_seconds * 1.9438444924406
             if distance_m < 1.0:
-                _add_flag(flags, row, "REPEATED_IDENTICAL_POINT", "WARNING", "Sequential position repeats", False)
+                _add_flag(
+                    flags,
+                    row,
+                    "REPEATED_IDENTICAL_POINT",
+                    "WARNING",
+                    "Sequential position repeats",
+                    False,
+                )
             if speed_knots > config.max_speed_knots:
                 _add_flag(flags, row, "IMPOSSIBLE_SPEED", "ERROR", f"{speed_knots:.1f} knots", True)
                 excluded_indices.add(index)
@@ -372,10 +432,19 @@ def quality_control(
                         "gap_seconds": gap_seconds,
                     }
                 )
-                _add_flag(flags, row, "LARGE_OBSERVATION_GAP", "WARNING", f"{gap_seconds:.0f} seconds", False)
+                _add_flag(
+                    flags,
+                    row,
+                    "LARGE_OBSERVATION_GAP",
+                    "WARNING",
+                    f"{gap_seconds:.0f} seconds",
+                    False,
+                )
             previous = (index, row)
 
-    excluded = frame.loc[sorted(excluded_indices)].copy() if excluded_indices else frame.iloc[0:0].copy()
+    excluded = (
+        frame.loc[sorted(excluded_indices)].copy() if excluded_indices else frame.iloc[0:0].copy()
+    )
     cleaned = frame.drop(index=excluded_indices).copy()
     segments = _build_segments(cleaned, config)
     validate_segment_entity_integrity(segments)
@@ -425,7 +494,14 @@ def _build_segments(
                     run = [row]
                     continue
                 gap = (row["_time"] - run[-1]["_time"]).total_seconds()
-                if gap <= config.observed_track_max_gap_seconds:
+                previous_source_segment = str(run[-1].get("source_segment_id") or "").strip()
+                current_source_segment = str(row.get("source_segment_id") or "").strip()
+                provider_segment_changed = (
+                    bool(previous_source_segment)
+                    and bool(current_source_segment)
+                    and previous_source_segment != current_source_segment
+                )
+                if gap <= config.observed_track_max_gap_seconds and not provider_segment_changed:
                     run.append(row)
                     continue
                 if len(run) >= 2:
@@ -479,10 +555,7 @@ def _segment_record(
             f"endpoints are invalid: segment={entity!r}, rows={sorted(row_entities)!r}"
         )
     times = [row["_time"] for row in rows]
-    gaps = [
-        (current - previous).total_seconds()
-        for previous, current in pairwise(times)
-    ]
+    gaps = [(current - previous).total_seconds() for previous, current in pairwise(times)]
     observation_ids = [str(row["observation_id"]) for row in rows]
     digest = hashlib.sha256("|".join(observation_ids).encode("utf-8")).hexdigest()[:16]
     return {
@@ -500,9 +573,16 @@ def _segment_record(
         "max_gap_seconds": max(gaps, default=0.0),
         "confidence": confidence,
         "source_set": json.dumps(sorted({str(row["source_name"]) for row in rows})),
-        "geometry": LineString(
-            [(float(row["longitude"]), float(row["latitude"])) for row in rows]
+        "source_segment_ids": json.dumps(
+            sorted(
+                {
+                    str(row.get("source_segment_id") or "").strip()
+                    for row in rows
+                    if str(row.get("source_segment_id") or "").strip()
+                }
+            )
         ),
+        "geometry": LineString([(float(row["longitude"]), float(row["latitude"])) for row in rows]),
     }
 
 

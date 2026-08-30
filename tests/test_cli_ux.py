@@ -46,16 +46,17 @@ def test_one_command_build_orchestrates_acquisition_and_qgis(monkeypatch, tmp_pa
 def test_maritime_one_command_exposes_only_research_decisions(monkeypatch, tmp_path: Path):
     captured = []
 
-    def fake_maritime(request, _root):
+    def fake_product(request, *, output_root, repository_root, build_id):
         captured.append(request)
-        return SimpleNamespace(
+        result = SimpleNamespace(
             build_id="maritime-ux",
             output=tmp_path / "maritime-ux",
             qgis_project=tmp_path / "maritime-ux" / "project" / "workspace.qgz",
             elapsed_seconds=12.5,
         )
+        return result, tmp_path / "maritime-ux.zip"
 
-    monkeypatch.setattr(cli, "execute_maritime_build", fake_maritime)
+    monkeypatch.setattr(cli, "execute_product_build", fake_product)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -81,6 +82,6 @@ def test_maritime_one_command_exposes_only_research_decisions(monkeypatch, tmp_p
     assert len(captured) == 1
     request = captured[0]
     assert request.area == "taiwan-east"
-    assert request.output_root == tmp_path
     assert request.actors == ("plan", "ccg", "research", "fishing")
-    assert request.local_inputs == ()
+    assert request.input_files == ()
+    assert request.background == "bathymetry"

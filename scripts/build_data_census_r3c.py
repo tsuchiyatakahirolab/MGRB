@@ -570,7 +570,9 @@ def build_actor_summary(rows: list[dict[str, str]]) -> list[dict[str, str]]:
                 "no_matches_in_searched_interface": str(len(no_match)),
                 "authentication_blocked_or_unsupported_identifier": str(len(blocked)),
                 "match_percentage_of_all_entities": (
-                    f"{100 * (len(exact) + len(strong)) / denominator:.2f}" if denominator else "0.00"
+                    f"{100 * (len(exact) + len(strong)) / denominator:.2f}"
+                    if denominator
+                    else "0.00"
                 ),
                 "scope_note": (
                     "Exact matches are against the GFW Fishing vessels v3 bulk archive only; "
@@ -609,9 +611,7 @@ def build_taiwan(matches: list[dict[str, str]]) -> list[dict[str, str]]:
     ]
 
 
-def upsert_existing(
-    resolution: list[dict[str, str]], bulk_path: Path, bulk_loaded: bool
-) -> None:
+def upsert_existing(resolution: list[dict[str, str]], bulk_path: Path, bulk_loaded: bool) -> None:
     access_changes = {
         "gfw_fishing_vessels_v3": "OPEN_BULK_ARCHIVE",
         "gfw_fleet_monthly_v3": "OPEN_BULK_ARCHIVE",
@@ -814,7 +814,9 @@ def upsert_existing(
     cross_path = CENSUS / "VESSEL_SOURCE_CROSSWALK.csv"
     cross = read_csv(cross_path)
     exact_ids = {
-        row["mgrb_entity_id"]: row for row in resolution if row["match_status"] == "EXACT_IDENTIFIER"
+        row["mgrb_entity_id"]: row
+        for row in resolution
+        if row["match_status"] == "EXACT_IDENTIFIER"
     }
     for row in cross:
         if row["vessel_key"] in exact_ids:
@@ -948,7 +950,9 @@ def append_once(path: Path, marker: str, text: str) -> None:
 
 
 def write_markdown(
-    resolution: list[dict[str, str]], actor_rows: list[dict[str, str]], matches: list[dict[str, str]]
+    resolution: list[dict[str, str]],
+    actor_rows: list[dict[str, str]],
+    matches: list[dict[str, str]],
 ) -> None:
     searched = sum(row["successfully_searched"] == "YES" for row in resolution)
     blocked = len(resolution) - searched

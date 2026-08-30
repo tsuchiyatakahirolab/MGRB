@@ -76,7 +76,14 @@ def evidence_adapter_catalog() -> dict[str, EvidenceAdapterDescriptor]:
         ),
         EvidenceAdapterDescriptor(
             "byo",
-            ("AIS", "SAR_DETECTION", "OPTICAL_DETECTION", "PORT_RECORD", "USER_SUPPLIED", "LICENSED_EXTERNAL"),
+            (
+                "AIS",
+                "SAR_DETECTION",
+                "OPTICAL_DETECTION",
+                "PORT_RECORD",
+                "USER_SUPPLIED",
+                "LICENSED_EXTERNAL",
+            ),
             "LOCAL_IMPORT",
             "User must provide license and allowed-use metadata",
             "EXCLUDED_BY_DEFAULT",
@@ -174,8 +181,7 @@ class MarineRegionsWFSAdapter:
 
 class WorldBankTrafficDensityAdapter:
     dataset_url = (
-        "https://datacatalog.worldbank.org/search/dataset/0037580/"
-        "global-shipping-traffic-density"
+        "https://datacatalog.worldbank.org/search/dataset/0037580/global-shipping-traffic-density"
     )
     download_url = (
         "https://datacatalogfiles.worldbank.org/ddh-published/0037580/5/"
@@ -193,15 +199,18 @@ class WorldBankTrafficDensityAdapter:
                 self.download_url, headers={"User-Agent": "MGRB/1.0 public-data-build"}
             )
             try:
-                with urllib.request.urlopen(request, timeout=timeout) as response, partial.open(
-                    "wb"
-                ) as output:
+                with (
+                    urllib.request.urlopen(request, timeout=timeout) as response,
+                    partial.open("wb") as output,
+                ):
                     while chunk := response.read(1024 * 1024):
                         output.write(chunk)
                 partial.replace(target)
             except Exception as exc:
                 partial.unlink(missing_ok=True)
-                raise SourceUnavailable(f"World Bank traffic-density download failed: {exc}") from exc
+                raise SourceUnavailable(
+                    f"World Bank traffic-density download failed: {exc}"
+                ) from exc
         actual = sha256(target)
         if actual != self.archive_sha256:
             raise SourceUnavailable(
@@ -232,9 +241,7 @@ class WorldBankTrafficDensityAdapter:
         source = self.require_cache(cache_path).resolve()
         source_hash = sha256(source)
         if source.suffix.casefold() == ".zip":
-            raster_source = (
-                f"/vsizip/{source.as_posix()}/{self.archive_member}"
-            )
+            raster_source = f"/vsizip/{source.as_posix()}/{self.archive_member}"
         else:
             raster_source = str(source)
         xmin, ymin, xmax, ymax = bbox
@@ -282,8 +289,10 @@ class WorldBankTrafficDensityAdapter:
                 windows = []
                 for part in parts:
                     window = from_bounds(*part, transform=dataset.transform)
-                    window = window.round_offsets().round_lengths().intersection(
-                        Window(0, 0, dataset.width, dataset.height)
+                    window = (
+                        window.round_offsets()
+                        .round_lengths()
+                        .intersection(Window(0, 0, dataset.width, dataset.height))
                     )
                     windows.append((part, window))
                 total_width = sum(window.width for _, window in windows)
@@ -302,9 +311,9 @@ class WorldBankTrafficDensityAdapter:
                         valid &= raw != dataset.nodata
                     valid &= raw >= 0
                     transformed_part = np.full(raw.shape, -9999.0, dtype="float32")
-                    transformed_part[valid] = np.log1p(
-                        raw[valid].astype("float64")
-                    ).astype("float32")
+                    transformed_part[valid] = np.log1p(raw[valid].astype("float64")).astype(
+                        "float32"
+                    )
                     transform = dataset.window_transform(window) * Affine.scale(
                         window.width / out_width, window.height / out_height
                     )
@@ -367,9 +376,7 @@ class WorldBankTrafficDensityAdapter:
                             if scale > 1.0
                             else "native source resolution"
                         ),
-                        MGRB_DENSITY_QUANTILES=",".join(
-                            f"{value:.6f}" for value in quantiles
-                        ),
+                        MGRB_DENSITY_QUANTILES=",".join(f"{value:.6f}" for value in quantiles),
                     )
             finally:
                 for part_dataset in opened:
@@ -431,7 +438,11 @@ class PangaeaXueLong2012Adapter:
             raise SourceUnavailable("PANGAEA Xue Long table header was not found")
         frame = pd.read_csv(io.StringIO(text[offset:]), sep="\t")
         frame = frame.rename(
-            columns={"Date/Time": "timestamp_start", "Longitude": "longitude", "Latitude": "latitude"}
+            columns={
+                "Date/Time": "timestamp_start",
+                "Longitude": "longitude",
+                "Latitude": "latitude",
+            }
         )
         frame["entity_id"] = "research-xue-long"
         frame["vessel_name"] = "Xue Long"
@@ -447,9 +458,7 @@ class PangaeaXueLong2012Adapter:
         frame["position_uncertainty_m"] = 1000.0
         frame["temporal_uncertainty_s"] = 60.0
         frame["license"] = "CC BY 3.0"
-        frame["attribution"] = (
-            "Chen, Cai & Ouyang (2018), PANGAEA, doi:10.1594/PANGAEA.891818"
-        )
+        frame["attribution"] = "Chen, Cai & Ouyang (2018), PANGAEA, doi:10.1594/PANGAEA.891818"
         frame["raw_record_reference"] = self.download_url
         frame["processing_notes"] = (
             "Published underway cruise-track position; provider cruise QC flag D retained as caveat"

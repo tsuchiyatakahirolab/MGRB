@@ -95,9 +95,9 @@ def _label_points(layer: QgsVectorLayer, color: str) -> None:
     settings.fieldName = (
         "CASE "
         "WHEN \"actor_type\" = 'CCG' THEN replace(\"vessel_name\", 'China Coast Guard', 'CCG') "
-        "WHEN \"actor_type\" = 'RESEARCH_SURVEY' THEN \"vessel_name\" "
-        "WHEN \"actor_type\" = 'FISHING' THEN \"vessel_name\" "
-        "ELSE \"vessel_name\" END"
+        'WHEN "actor_type" = \'RESEARCH_SURVEY\' THEN "vessel_name" '
+        'WHEN "actor_type" = \'FISHING\' THEN "vessel_name" '
+        'ELSE "vessel_name" END'
     )
     settings.isExpression = True
     settings.enabled = True
@@ -202,13 +202,19 @@ def _style_traffic_density(layer: QgsRasterLayer) -> None:
     layer.setOpacity(0.20)
 
 
-def _line_style(layer: QgsVectorLayer, color: str, segment_type: str) -> None:
+def _line_style(
+    layer: QgsVectorLayer,
+    color: str,
+    segment_type: str,
+    *,
+    width: str | None = None,
+) -> None:
     line_style = {
         "OBSERVED_TRACK": "solid",
         "SHORT_INTERPOLATION": "dash dot",
         "INFERRED_CONNECTION": "dash",
     }[segment_type]
-    width = "0.85" if segment_type == "OBSERVED_TRACK" else "0.60"
+    width = width or ("0.85" if segment_type == "OBSERVED_TRACK" else "0.60")
     layer.setRenderer(
         QgsSingleSymbolRenderer(
             QgsLineSymbol.createSimple(
@@ -273,9 +279,7 @@ def _fit_extent(extent: QgsRectangle, map_mm: list[float]) -> QgsRectangle:
 def _project_has_repo_path(project_path: Path) -> bool:
     with zipfile.ZipFile(project_path) as archive:
         payload = b"\n".join(
-            archive.read(name)
-            for name in archive.namelist()
-            if name.endswith((".qgs", ".xml"))
+            archive.read(name) for name in archive.namelist() if name.endswith((".qgs", ".xml"))
         ).decode("utf-8", errors="ignore")
     return str(ROOT).lower().replace("\\", "/") in payload.lower().replace("\\", "/")
 
@@ -346,7 +350,7 @@ def _add_actor_layers(
         tracks,
         "track_segments",
         names[0],
-        f'"actor_type" = \'{actor}\' AND "segment_type" = \'OBSERVED_TRACK\'',
+        f"\"actor_type\" = '{actor}' AND \"segment_type\" = 'OBSERVED_TRACK'",
     )
     _line_style(observed, color, "OBSERVED_TRACK")
     if actor == "RESEARCH_SURVEY":
@@ -371,8 +375,8 @@ def _add_actor_layers(
         "observations",
         names[-2],
         (
-            f'"actor_type" = \'{actor}\' AND "source_type" = \'OFFICIAL_OBSERVATION\' '
-            'AND coalesce("position_confidence", \'UNKNOWN\') <> \'LOW\''
+            f"\"actor_type\" = '{actor}' AND \"source_type\" = 'OFFICIAL_OBSERVATION' "
+            "AND coalesce(\"position_confidence\", 'UNKNOWN') <> 'LOW'"
         ),
     )
     _point_style(official, color)
@@ -383,7 +387,7 @@ def _add_actor_layers(
         tracks,
         "track_segments",
         names[-1],
-        f'"actor_type" = \'{actor}\' AND "segment_type" = \'INFERRED_CONNECTION\'',
+        f"\"actor_type\" = '{actor}' AND \"segment_type\" = 'INFERRED_CONNECTION'",
     )
     _line_style(inferred, color, "INFERRED_CONNECTION")
     return [observed, *middle_layers, official, inferred]
@@ -424,7 +428,13 @@ def _legend_layer_has_evidence(layer: QgsVectorLayer, evidence: dict) -> bool:
         None,
     )
     if actor is None:
-        return True
+        if layer.name() == "Observed Tracks":
+            return int(evidence.get("segment_types", {}).get("OBSERVED_TRACK", 0)) > 0
+        if layer.name() == "Inferred Segments":
+            return int(evidence.get("segment_types", {}).get("INFERRED_CONNECTION", 0)) > 0
+        if layer.name() == "Official Observations":
+            return int(evidence.get("evidence_methods", {}).get("OFFICIAL_OBSERVATION", 0)) > 0
+        return layer.featureCount() > 0
     if layer.name() == "Official Observations":
         return int(evidence.get("actor_observation_counts", {}).get(actor, 0)) > 0
     if layer.name() == "Inferred Segments":
@@ -443,6 +453,9 @@ def build(spec_path: Path) -> dict:
     source_manifest = package / spec["files"]["source_manifest"]
     style_manifest = package / spec["files"]["style_manifest"]
     build_data = spec["build"]
+    selected_state = spec.get("selected_state", {})
+    enabled_maritime = set(selected_state.get("maritime_layers", ()))
+    background_id = selected_state.get("background", "bathymetry")
     files = {key: package / value for key, value in spec["files"].items() if value}
 
     project = QgsProject.instance()
@@ -486,16 +499,46 @@ def build(spec_path: Path) -> dict:
     project.writeEntry("MGRB", "style_manifest", style_manifest.read_text(encoding="utf-8"))
 
     root = project.layerTreeRoot()
-    groups = {name: root.addGroup(name) for name in (
-        "01 BASE",
-        "02 MARITIME JURISDICTION",
-        "03 PLAN",
-        "04 CHINA COAST GUARD",
-        "05 RESEARCH / SURVEY VESSELS",
-        "06 CHINESE FISHING",
-        "07 EVENTS & ANNOTATIONS",
-        "08 OPTIONAL / ANALYTIC",
-    )}
+    product_mode = bool(build_data.get("product_mode", False))
+    if product_mode:
+        root_groups = {
+            name: root.addGroup(name)
+            for name in (
+                "01 BASE",
+                "02 MARITIME JURISDICTION",
+                "03 USER / VESSEL DATA",
+                "04 OFFICIAL / OTHER OBSERVATIONS",
+                "05 EVENTS",
+                "06 INFRASTRUCTURE / CONTEXT",
+                "07 ANALYTIC / OPTIONAL",
+            )
+        }
+        user_group = root_groups["03 USER / VESSEL DATA"]
+        groups = {
+            "01 BASE": root_groups["01 BASE"],
+            "02 MARITIME JURISDICTION": root_groups["02 MARITIME JURISDICTION"],
+            "03 PLAN": user_group.addGroup("PLAN"),
+            "04 CHINA COAST GUARD": user_group.addGroup("CCG"),
+            "05 RESEARCH / SURVEY VESSELS": user_group.addGroup("RESEARCH / SURVEY"),
+            "06 CHINESE FISHING": user_group.addGroup("FISHING / OTHER"),
+            "07 EVENTS & ANNOTATIONS": root_groups["05 EVENTS"],
+            "08 OPTIONAL / ANALYTIC": root_groups["07 ANALYTIC / OPTIONAL"],
+        }
+    else:
+        root_groups = {
+            name: root.addGroup(name)
+            for name in (
+                "01 BASE",
+                "02 MARITIME JURISDICTION",
+                "03 PLAN",
+                "04 CHINA COAST GUARD",
+                "05 RESEARCH / SURVEY VESSELS",
+                "06 CHINESE FISHING",
+                "07 EVENTS & ANNOTATIONS",
+                "08 OPTIONAL / ANALYTIC",
+            )
+        }
+        groups = root_groups
 
     bathy = QgsRasterLayer(str(files["bathymetry"]), "Bathymetry")
     if not bathy.isValid():
@@ -504,12 +547,11 @@ def build(spec_path: Path) -> dict:
     bathy.setOpacity(min(bathy.opacity(), 0.66))
     land = _layer(project, groups["01 BASE"], files["base_gpkg"], "land", "Land")
     carto._style_land(land, spec["theme"])
-    coast = _layer(
-        project, groups["01 BASE"], files["base_gpkg"], "coastline", "Coastline"
-    )
+    coast = _layer(project, groups["01 BASE"], files["base_gpkg"], "coastline", "Coastline")
     carto._style_line(coast, "#4c5558", 0.22)
     project.addMapLayer(bathy, False)
     groups["01 BASE"].addLayer(bathy)
+    _set_visibility(groups["01 BASE"], bathy, background_id != "none")
     traffic = None
     if spec["availability"]["normal_traffic_density"]:
         traffic = QgsRasterLayer(str(files["traffic_density"]), "Normal Traffic Density")
@@ -549,20 +591,53 @@ def build(spec_path: Path) -> dict:
         "maritime_boundaries",
         "Other Maritime Boundaries",
     )
+    continental = _layer(
+        project,
+        groups["02 MARITIME JURISDICTION"],
+        files["maritime_gpkg"],
+        "continental_shelf",
+        "Continental Shelf Reference",
+    )
+    median = _layer(
+        project,
+        groups["02 MARITIME JURISDICTION"],
+        files["maritime_gpkg"],
+        "computed_median",
+        "Computed Median / Equidistance Reference",
+    )
+    custom_boundary = _layer(
+        project,
+        groups["02 MARITIME JURISDICTION"],
+        files["maritime_gpkg"],
+        "custom_boundary",
+        "Custom Boundary Layer",
+    )
     for boundary, style, width in (
         (territorial, "solid", "0.22"),
         (contiguous, "dash dot", "0.18"),
         (eez, "dash", "0.16"),
         (other, "dot", "0.14"),
+        (continental, "dash dot", "0.16"),
+        (median, "dash", "0.18"),
+        (custom_boundary, "solid", "0.18"),
     ):
         _boundary_style(boundary, "#55656d", width, style)
     boundary_visibility = {
-        territorial.id(): territorial.featureCount() > 0,
-        contiguous.id(): False,
-        eez.id(): eez.featureCount() > 0,
-        other.id(): False,
+        territorial.id(): (
+            "territorial_sea" in enabled_maritime and territorial.featureCount() > 0
+        ),
+        contiguous.id(): ("contiguous_zone" in enabled_maritime and contiguous.featureCount() > 0),
+        eez.id(): "eez_reference" in enabled_maritime and eez.featureCount() > 0,
+        other.id(): "maritime_boundary" in enabled_maritime and other.featureCount() > 0,
+        continental.id(): (
+            "continental_shelf" in enabled_maritime and continental.featureCount() > 0
+        ),
+        median.id(): "computed_median" in enabled_maritime and median.featureCount() > 0,
+        custom_boundary.id(): (
+            "custom_boundary" in enabled_maritime and custom_boundary.featureCount() > 0
+        ),
     }
-    for boundary in (territorial, contiguous, eez, other):
+    for boundary in (territorial, contiguous, eez, other, continental, median, custom_boundary):
         _set_visibility(
             groups["02 MARITIME JURISDICTION"],
             boundary,
@@ -570,6 +645,53 @@ def build(spec_path: Path) -> dict:
         )
 
     evidence_layers: list[QgsVectorLayer] = []
+    product_evidence_layers: list[QgsVectorLayer] = []
+    if product_mode:
+        generic_positions = _layer(
+            project,
+            root_groups["03 USER / VESSEL DATA"],
+            files["observations_gpkg"],
+            "observations",
+            "Position Points",
+            "\"source_type\" IN ('USER_SUPPLIED', 'AIS', 'PUBLIC_TRACK')",
+        )
+        _point_style(generic_positions, "#b44732")
+        generic_tracks = _layer(
+            project,
+            root_groups["03 USER / VESSEL DATA"],
+            files["tracks_gpkg"],
+            "track_segments",
+            "Observed Tracks",
+            "\"segment_type\" = 'OBSERVED_TRACK'",
+        )
+        _line_style(generic_tracks, "#b44732", "OBSERVED_TRACK", width="0.45")
+        generic_inferred = _layer(
+            project,
+            root_groups["04 OFFICIAL / OTHER OBSERVATIONS"],
+            files["tracks_gpkg"],
+            "track_segments",
+            "Inferred Segments",
+            "\"segment_type\" = 'INFERRED_CONNECTION'",
+        )
+        _line_style(generic_inferred, "#555555", "INFERRED_CONNECTION", width="0.35")
+        generic_official = _layer(
+            project,
+            root_groups["04 OFFICIAL / OTHER OBSERVATIONS"],
+            files["observations_gpkg"],
+            "observations",
+            "Official Observations",
+            "\"source_type\" = 'OFFICIAL_OBSERVATION'",
+        )
+        _point_style(generic_official, "#555555")
+        product_evidence_layers.extend(
+            (generic_tracks, generic_positions, generic_inferred, generic_official)
+        )
+        evidence_layers.extend(product_evidence_layers)
+        _set_visibility(
+            root_groups["03 USER / VESSEL DATA"],
+            generic_positions,
+            generic_tracks.featureCount() == 0,
+        )
     evidence_layers.extend(
         _add_actor_layers(
             project,
@@ -628,7 +750,7 @@ def build(spec_path: Path) -> dict:
         files["observations_gpkg"],
         "observations",
         "Documented Maritime Militia",
-        '"actor_type" = \'MARITIME_MILITIA\'',
+        "\"actor_type\" = 'MARITIME_MILITIA'",
     )
     _point_style(militia, ACTOR_COLORS["MARITIME_MILITIA"])
     _set_visibility(groups["06 CHINESE FISHING"], militia, False)
@@ -639,7 +761,7 @@ def build(spec_path: Path) -> dict:
         files["observations_gpkg"],
         "observations",
         "Uncertain Detections",
-        '"actor_type" = \'PLAN\' AND "position_confidence" = \'LOW\'',
+        "\"actor_type\" = 'PLAN' AND \"position_confidence\" = 'LOW'",
     )
     _point_style(uncertain, ACTOR_COLORS["PLAN"], uncertain=True)
     _label_points(uncertain, ACTOR_COLORS["PLAN"])
@@ -649,7 +771,7 @@ def build(spec_path: Path) -> dict:
         files["observations_gpkg"],
         "observations",
         "Uncertain Detections",
-        '"actor_type" = \'CCG\' AND "position_confidence" = \'LOW\'',
+        "\"actor_type\" = 'CCG' AND \"position_confidence\" = 'LOW'",
     )
     _point_style(ccg_uncertain, ACTOR_COLORS["CCG"], uncertain=True)
     _label_points(ccg_uncertain, ACTOR_COLORS["CCG"])
@@ -659,7 +781,7 @@ def build(spec_path: Path) -> dict:
         files["observations_gpkg"],
         "observations",
         "Uncertain Detections",
-        '"actor_type" = \'RESEARCH_SURVEY\' AND "position_confidence" = \'LOW\'',
+        "\"actor_type\" = 'RESEARCH_SURVEY' AND \"position_confidence\" = 'LOW'",
     )
     _point_style(research_uncertain, ACTOR_COLORS["RESEARCH_SURVEY"], uncertain=True)
     _label_points(research_uncertain, ACTOR_COLORS["RESEARCH_SURVEY"])
@@ -669,10 +791,13 @@ def build(spec_path: Path) -> dict:
         files["observations_gpkg"],
         "observations",
         "Uncertain Detections",
-        '"actor_type" = \'FISHING\' AND "position_confidence" = \'LOW\'',
+        "\"actor_type\" = 'FISHING' AND \"position_confidence\" = 'LOW'",
     )
     _point_style(fishing_uncertain, ACTOR_COLORS["FISHING"], uncertain=True)
     _label_points(fishing_uncertain, ACTOR_COLORS["FISHING"])
+
+    if product_mode:
+        evidence_layers = product_evidence_layers
 
     for name in ("Encounters", "Port Visits", "AIS Gaps", "User Notes"):
         placeholder = _layer(
@@ -728,6 +853,9 @@ def build(spec_path: Path) -> dict:
         (territorial, "Territorial Sea reference"),
         (eez, "EEZ / reference EEZ"),
         (other, "Other maritime boundary"),
+        (continental, "Continental shelf reference"),
+        (median, "Computed median/equidistance reference"),
+        (custom_boundary, "Custom boundary layer"),
     ):
         if boundary_visibility[boundary.id()] and boundary.featureCount() > 0:
             context_entries.append((boundary, label))
@@ -752,11 +880,13 @@ def build(spec_path: Path) -> dict:
 
     paper_spec = copy.deepcopy(spec)
     paper_spec["build"]["layout_profile"] = "MGRB Paper"
-    paper_spec["build"]["visible_footer"] = True
+    paper_spec["build"]["visible_footer"] = bool(build_data.get("visible_footer", True))
     paper_spec["layout_title"] = spec["region"]["purpose"]
     paper_spec["layout_subtitle"] = ""
     paper_spec["legend_title"] = "LEGEND"
-    paper_spec["layout"]["legend_mm"] = [40.0, 50.0]
+    legend_row_count = sum(len(entries) + 1 for _, entries in legend_sections)
+    compact_legend_height = max(18.0, min(40.0, 9.0 + legend_row_count * 4.8))
+    paper_spec["layout"]["legend_mm"] = [38.0, compact_legend_height]
     paper = carto._build_layout(
         project,
         paper_spec,
@@ -784,7 +914,7 @@ def build(spec_path: Path) -> dict:
         "title_pt": 16,
         "subtitle_pt": 8,
         "footer_pt": 5,
-        "legend_mm": [44.0, 52.0],
+        "legend_mm": [42.0, min(42.0, compact_legend_height + 2.0)],
     }
     media_spec["legend_title"] = "LEGEND"
     media_extent = _fit_extent(
@@ -826,13 +956,20 @@ def build(spec_path: Path) -> dict:
         "legend_context_layers": [label for _, label in context_entries],
         "hidden_context_layers": [
             layer.name()
-            for layer in (territorial, contiguous, eez, other)
+            for layer in (
+                territorial,
+                contiguous,
+                eez,
+                other,
+                continental,
+                median,
+                custom_boundary,
+            )
             if not boundary_visibility[layer.id()]
         ],
     }
     context_legend_qa["passed"] = (
-        context_legend_qa["visible_context_layers"]
-        == context_legend_qa["legend_context_layers"]
+        context_legend_qa["visible_context_layers"] == context_legend_qa["legend_context_layers"]
     )
     profile_distinction_qa = {
         "paper_title": paper_spec["layout_title"],
@@ -841,32 +978,41 @@ def build(spec_path: Path) -> dict:
         "paper_title_pt": paper_spec["layout"]["title_pt"],
         "media_title_pt": media_spec["layout"]["title_pt"],
         "paper_orientation_labels": sum(
-            bool(label.get("paper", True))
-            for label in spec["region"].get("orientation_labels", [])
+            bool(label.get("paper", True)) for label in spec["region"].get("orientation_labels", [])
         ),
         "media_orientation_labels": sum(
-            bool(label.get("media", True))
-            for label in spec["region"].get("orientation_labels", [])
+            bool(label.get("media", True)) for label in spec["region"].get("orientation_labels", [])
         ),
     }
     profile_distinction_qa["passed"] = (
         profile_distinction_qa["paper_title"] != profile_distinction_qa["media_title"]
         and bool(profile_distinction_qa["media_subtitle"])
-        and profile_distinction_qa["media_title_pt"]
-        > profile_distinction_qa["paper_title_pt"]
+        and profile_distinction_qa["media_title_pt"] > profile_distinction_qa["paper_title_pt"]
         and profile_distinction_qa["media_orientation_labels"]
         >= profile_distinction_qa["paper_orientation_labels"]
     )
     if not profile_distinction_qa["passed"]:
         raise RuntimeError(f"Paper/media profile distinction QA failed: {profile_distinction_qa}")
 
+    official_style_layer = product_evidence_layers[3] if product_mode else evidence_layers[1]
+    inferred_style_layer = product_evidence_layers[2] if product_mode else evidence_layers[2]
     for style_name, style_layer in (
         ("bathymetry-overlay-quiet.qml", bathy),
-        ("official-observation.qml", evidence_layers[1]),
-        ("inferred-segment.qml", evidence_layers[2]),
+        ("official-observation.qml", official_style_layer),
+        ("inferred-segment.qml", inferred_style_layer),
         ("uncertain-detection.qml", uncertain),
     ):
         style_layer.saveNamedStyle(str(package / "styles" / style_name))
+
+    if product_mode:
+        actor_group_map = {
+            "PLAN": groups["03 PLAN"],
+            "CCG": groups["04 CHINA COAST GUARD"],
+            "RESEARCH_SURVEY": groups["05 RESEARCH / SURVEY VESSELS"],
+            "FISHING": groups["06 CHINESE FISHING"],
+        }
+        for actor_group in actor_group_map.values():
+            root_groups["03 USER / VESSEL DATA"].removeChildNode(actor_group)
 
     _set_visibility(groups["07 EVENTS & ANNOTATIONS"], paper_orientation, True)
     _set_visibility(groups["07 EVENTS & ANNOTATIONS"], media_orientation, False)
@@ -881,10 +1027,15 @@ def build(spec_path: Path) -> dict:
         "paper_pdf": exports / "paper_map.pdf",
         "paper_svg": exports / "paper_map.svg",
         "media_png": exports / "media_map.png",
+        "journal_width_png": exports / "paper_map_journal_85mm.png",
     }
     _export_layout(paper, outputs["paper_png"], "png", 300)
     _export_layout(paper, outputs["paper_pdf"], "pdf", 300)
     _export_layout(paper, outputs["paper_svg"], "svg", 300)
+    journal_image = QImage(str(outputs["paper_png"]))
+    journal_image = journal_image.scaledToWidth(1004)
+    if not journal_image.save(str(outputs["journal_width_png"]), "PNG"):
+        raise RuntimeError("Failed to create 85 mm journal-width preview")
     _set_visibility(groups["07 EVENTS & ANNOTATIONS"], paper_orientation, False)
     _set_visibility(groups["07 EVENTS & ANNOTATIONS"], media_orientation, True)
     _export_layout(media, outputs["media_png"], "png", 180)
@@ -895,8 +1046,9 @@ def build(spec_path: Path) -> dict:
 
     paper_qa = _tofu_qa(outputs["paper_png"])
     media_qa = _tofu_qa(outputs["media_png"])
-    if not paper_qa["passed"] or not media_qa["passed"]:
-        raise RuntimeError(f"Missing-glyph/tofu QA failed: {paper_qa}, {media_qa}")
+    journal_qa = _tofu_qa(outputs["journal_width_png"])
+    if not paper_qa["passed"] or not media_qa["passed"] or not journal_qa["passed"]:
+        raise RuntimeError(f"Missing-glyph/tofu QA failed: {paper_qa}, {media_qa}, {journal_qa}")
     layout_checks = layout_qa(spec["layout"], tuple(spec["region"]["bbox"]))
     if not layout_checks["orientation_is_adaptive"] or layout_checks["awkward_map_frame"]:
         raise RuntimeError(f"Adaptive layout QA failed: {layout_checks}")
@@ -974,7 +1126,7 @@ def build(spec_path: Path) -> dict:
     if not reopened.read(str(qgz)):
         raise RuntimeError(f"QGIS could not reopen generated project: {qgz}")
     group_names = [child.name() for child in reopened.layerTreeRoot().children()]
-    expected_groups = list(groups)
+    expected_groups = list(root_groups)
     if group_names != expected_groups:
         raise RuntimeError(f"Unexpected QGIS layer tree: {group_names}")
     reopened.clear()
@@ -989,7 +1141,9 @@ def build(spec_path: Path) -> dict:
     portable_project = portable_root / "project" / qgz.name
     portable = QgsProject()
     portable_ok = portable.read(str(portable_project))
-    portable_invalid = sorted(layer.name() for layer in portable.mapLayers().values() if not layer.isValid())
+    portable_invalid = sorted(
+        layer.name() for layer in portable.mapLayers().values() if not layer.isValid()
+    )
     portable.clear()
     del portable
     gc.collect()
@@ -1038,6 +1192,7 @@ def build(spec_path: Path) -> dict:
             "bundled_font": carto.FONT_PREFLIGHT,
             "paper_text": paper_qa,
             "media_text": media_qa,
+            "journal_width_text": journal_qa,
             "raster_coverage": raster_qa,
             "media_raster_coverage": media_raster_qa,
             "traffic_raster_coverage": traffic_raster_qa,

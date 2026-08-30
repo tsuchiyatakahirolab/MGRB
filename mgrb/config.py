@@ -87,9 +87,7 @@ def load_regions(path: Path) -> dict[str, Region]:
             public_evidence_sources=tuple(
                 str(value) for value in cfg.get("public_evidence_sources", ())
             ),
-            orientation_labels=tuple(
-                dict(value) for value in cfg.get("orientation_labels", ())
-            ),
+            orientation_labels=tuple(dict(value) for value in cfg.get("orientation_labels", ())),
             media_title=str(cfg.get("media_title", "")),
             media_subtitle=str(cfg.get("media_subtitle", "")),
         )

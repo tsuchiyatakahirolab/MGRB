@@ -6,8 +6,10 @@ authors:
   - family-names: Tsuchiya
     given-names: Takahiro
 version: 1.0.0
-date-released: 2026-08-12
 license: Apache-2.0
+abstract: >-
+  A local, reproducible product that automates public maritime geospatial source integration,
+  cartographic defaults, evidence-safe track processing, and portable QGIS research packages.
 keywords:
   - maritime research
   - QGIS

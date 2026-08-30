@@ -22,7 +22,9 @@ from .adapters import (
 )
 from .cartography import buffered_bbox, buffered_vector_bbox, resolve_layout_geometry
 from .config import Region, load_profiles, load_regions, load_yaml
-from .evidence import QualityControlConfig, normalize_evidence, quality_control, read_evidence
+from .evidence import QualityControlConfig, normalize_evidence, quality_control
+from .importer import normalize_user_input
+from .product import BACKGROUND_PRESETS
 from .provenance import git_commit, sha256
 from .sources import SourceRegistry
 from .theme import resolve_theme
@@ -54,6 +56,17 @@ class ResearchBuildRequest:
     live_sources: bool = True
     traffic_density: Path | None = None
     base_build_id: str | None = None
+    background: str = "bathymetry"
+    enabled_maritime_layers: tuple[str, ...] = (
+        "eez_reference",
+        "territorial_sea",
+    )
+    field_maps: dict[str, dict[str, str]] | None = None
+    include_public_observations: bool = True
+    product_mode: bool = False
+    regions_config: Path | None = None
+    visible_footer: bool = True
+    requested_outputs: tuple[str, ...] = ("preview", "paper", "media", "qgis")
 
 
 @dataclass(frozen=True)
@@ -164,10 +177,11 @@ def _filter_observations(
     if region.longitude_convention == "360":
         longitudes = longitudes.mod(360.0)
     normalized = normalized[
-        longitudes.between(xmin, xmax)
-        & normalized["latitude"].between(ymin, ymax)
+        longitudes.between(xmin, xmax) & normalized["latitude"].between(ymin, ymax)
     ]
-    actors = normalize_actor_names(request.actors or region.default_actors)
+    actors = normalize_actor_names(
+        request.actors if request.product_mode else (request.actors or region.default_actors)
+    )
     if actors:
         normalized = normalized[normalized["actor_type"].isin(actors)]
     return normalized.copy()
@@ -285,7 +299,7 @@ def prepare_research_package(
     marine_adapter: MarineRegionsWFSAdapter | None = None,
 ) -> PreparedResearchPackage:
     root = repository_root.resolve()
-    regions = load_regions(root / "config" / "regions.yml")
+    regions = load_regions(request.regions_config or root / "config" / "regions.yml")
     if request.area not in regions:
         raise ValueError(f"Unknown research area: {request.area}")
     region = regions[request.area]
@@ -307,7 +321,11 @@ def prepare_research_package(
         root / "metadata" / "vessels-v0.1.yml",
         root / "schema" / "vessel_registry.schema.json",
     )
-    observations = _public_observations(root, registry, request, region)
+    observations = (
+        _public_observations(root, registry, request, region)
+        if request.include_public_observations
+        else gpd.GeoDataFrame()
+    )
     public_track_records: list[dict] = []
     for source_id in region.public_evidence_sources:
         if source_id != PangaeaXueLong2012Adapter.source_id:
@@ -324,10 +342,7 @@ def prepare_research_package(
             source_type="PUBLIC_TRACK",
             source_name="PANGAEA 891818 Xue Long cruise 76XL20120717",
             license_text="CC BY 3.0",
-            attribution=(
-                "Chen, Cai & Ouyang (2018), PANGAEA, "
-                "doi:10.1594/PANGAEA.891818"
-            ),
+            attribution=("Chen, Cai & Ouyang (2018), PANGAEA, doi:10.1594/PANGAEA.891818"),
             raw_reference=adapter.download_url,
         )
         normalized_track = _filter_observations(normalized_track, request, region)
@@ -362,14 +377,12 @@ def prepare_research_package(
         )
     local_source_records: list[dict] = []
     for local_input in request.local_inputs:
-        local = read_evidence(
+        local, import_summary = normalize_user_input(
             local_input,
-            registry,
             build_id=request.build_id,
-            source_type="USER_SUPPLIED",
-            license_text="USER_SUPPLIED_REVIEW_REQUIRED",
-            attribution="User-supplied local evidence",
+            field_map=(request.field_maps or {}).get(str(local_input)),
         )
+        local = _filter_observations(local, request, region)
         observations = pd.concat([observations, local], ignore_index=True)
         observations = gpd.GeoDataFrame(observations, geometry="geometry", crs=4326)
         local_source_records.append(
@@ -389,6 +402,7 @@ def prepare_research_package(
                 "source_sha256": sha256(local_input),
                 "availability": "LOCAL_ONLY",
                 "transformations": ["local import", "canonical normalization"],
+                "import_qc": import_summary,
             }
         )
     qc = quality_control(observations, QualityControlConfig())
@@ -414,15 +428,11 @@ def prepare_research_package(
 
     source_warnings: list[str] = []
     if region.public_evidence_sources and (not request.public_data or not request.live_sources):
-        source_warnings.append(
-            "Preset public track unavailable: offline/public-data-disabled mode"
-        )
+        source_warnings.append("Preset public track unavailable: offline/public-data-disabled mode")
     marine_records: list[dict] = []
     if request.public_data and request.live_sources:
         adapter = marine_adapter or MarineRegionsWFSAdapter()
-        marine_bbox = buffered_vector_bbox(
-            region.bbox, region.longitude_convention, region.profile
-        )
+        marine_bbox = buffered_vector_bbox(region.bbox, region.longitude_convention, region.profile)
         if region.longitude_convention == "360" and marine_bbox[2] > 180.0:
             # Marine Regions WFS accepts canonical WGS84 longitudes. The tiny
             # 179..180 continuation is supplied by the portable public base;
@@ -438,9 +448,7 @@ def prepare_research_package(
             root / "data" / "raw" / "marine_regions" / request.area,
         )
     else:
-        marine_layers = {
-            name: _empty_maritime_layer() for name in MarineRegionsWFSAdapter.layers
-        }
+        marine_layers = {name: _empty_maritime_layer() for name in MarineRegionsWFSAdapter.layers}
         source_warnings.append("Marine Regions unavailable: offline/public-data-disabled mode")
         for name, (_, source_id) in MarineRegionsWFSAdapter.layers.items():
             marine_records.append(
@@ -457,15 +465,24 @@ def prepare_research_package(
                     "transformations": [],
                 }
             )
+    for optional_layer in (
+        "maritime_boundary",
+        "continental_shelf",
+        "computed_median",
+        "custom_boundary",
+    ):
+        marine_layers.setdefault(optional_layer, _empty_maritime_layer())
+        if optional_layer in request.enabled_maritime_layers:
+            source_warnings.append(
+                f"{optional_layer} selected but no source or computation input was supplied"
+            )
     for layer_name, frame in marine_layers.items():
         _write_geodataframe(frame, maritime_path, layer_name)
 
     traffic_available = False
     traffic_details: dict[str, object] = {}
     if request.traffic_density:
-        traffic_window = buffered_bbox(
-            region.bbox, region.longitude_convention, region.profile
-        )
+        traffic_window = buffered_bbox(region.bbox, region.longitude_convention, region.profile)
         traffic_details = WorldBankTrafficDensityAdapter().subset(
             request.traffic_density,
             traffic_window,
@@ -507,20 +524,25 @@ def prepare_research_package(
 
     source_registry = SourceRegistry.load(root / "metadata" / "sources.yml")
     source_records = list(base_spec["sources"])
-    seed_hash = sha256(root / "metadata" / "public-observations-v0.1.csv")
-    for source_id in (
-        "japan_joint_staff_public_observations",
-        "japan_mofa_jcg_public_observations",
-        "taiwan_cga_public_observations",
-    ):
-        record = source_registry.get(source_id).manifest_record(
-            ["official_observations", "inferred_connections"],
-            ["normalize source-described positions", "preserve uncertainty", "clip to area/period"],
-            downloaded_at_utc=None,
-            source_hash=None,
-        )
-        record["normalized_fixture_sha256"] = seed_hash
-        source_records.append(record)
+    if request.include_public_observations:
+        seed_hash = sha256(root / "metadata" / "public-observations-v0.1.csv")
+        for source_id in (
+            "japan_joint_staff_public_observations",
+            "japan_mofa_jcg_public_observations",
+            "taiwan_cga_public_observations",
+        ):
+            record = source_registry.get(source_id).manifest_record(
+                ["official_observations", "inferred_connections"],
+                [
+                    "normalize source-described positions",
+                    "preserve uncertainty",
+                    "clip to area/period",
+                ],
+                downloaded_at_utc=None,
+                source_hash=None,
+            )
+            record["normalized_fixture_sha256"] = seed_hash
+            source_records.append(record)
     source_records.extend(marine_records)
     source_records.extend(public_track_records)
     source_records.extend(local_source_records)
@@ -555,7 +577,10 @@ def prepare_research_package(
     )
     shutil.copy2(source_manifest_path, directories["metadata"] / "source_manifest.json")
 
-    theme = resolve_theme("overlay-quiet", root / "config" / "themes")
+    background_config = BACKGROUND_PRESETS.get(request.background)
+    if background_config is None:
+        raise ValueError(f"Unknown background preset: {request.background}")
+    theme = resolve_theme(str(background_config["theme"]), root / "config" / "themes")
     style_manifest = theme.manifest()
     style_manifest.update(
         {
@@ -611,11 +636,22 @@ def prepare_research_package(
         "map_mm": layout["map_mm"],
         "crs": region.display_crs,
         "bbox_epsg4326": list(region.bbox),
+        "background": request.background,
+        "enabled_maritime_layers": list(request.enabled_maritime_layers),
+        "product_mode": request.product_mode,
+        "visible_footer": request.visible_footer,
+        "requested_outputs": list(request.requested_outputs),
         "research_period": {
             "from": request.start_date.isoformat() if request.start_date else None,
             "to": request.end_date.isoformat() if request.end_date else None,
         },
-        "actors": list(normalize_actor_names(request.actors or region.default_actors)),
+        "actors": list(
+            normalize_actor_names(
+                request.actors
+                if request.product_mode
+                else (request.actors or region.default_actors)
+            )
+        ),
         "source_manifest_id": source_manifest["manifest_id"],
         "source_manifest_sha256": sha256(source_manifest_path),
         "theme": {
@@ -635,7 +671,9 @@ def prepare_research_package(
                 f"{actor}:{segment_type}": int(count)
                 for (actor, segment_type), count in qc.track_segments.groupby(
                     ["actor_type", "segment_type"]
-                ).size().items()
+                )
+                .size()
+                .items()
             },
             "evidence_methods": qc.cleaned_points["observation_method"].value_counts().to_dict(),
             "inferred_entity_integrity": True,
@@ -687,6 +725,36 @@ def prepare_research_package(
         "files remain local and are excluded from distributable packages by default.\n",
         encoding="utf-8",
     )
+    product_spec_path = directories["metadata"] / "product-build-spec.json"
+    product_spec_path.write_text(
+        json.dumps(
+            {
+                "schema": "mgrb-product-build-spec-1.0",
+                "area": region.name,
+                "extent": list(region.bbox),
+                "projection": region.display_crs,
+                "cartographic_profile": region.profile,
+                "background": request.background,
+                "maritime_layers": list(request.enabled_maritime_layers),
+                "input_datasets": [
+                    {"filename": path.name, "sha256": sha256(path)}
+                    for path in request.local_inputs
+                ],
+                "field_maps": {
+                    Path(path).name: mapping
+                    for path, mapping in (request.field_maps or {}).items()
+                },
+                "include_public_observations": request.include_public_observations,
+                "visible_footer": request.visible_footer,
+                "requested_outputs": list(request.requested_outputs),
+                "product_mode": request.product_mode,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     (directories["metadata"] / "README.md").write_text(
         (
             f"# {region.title or region.purpose}\n\n"
@@ -718,6 +786,11 @@ def prepare_research_package(
             "marine_regions": all(not frame.empty for frame in marine_layers.values()),
             "normal_traffic_density": traffic_available,
         },
+        "selected_state": {
+            "background": request.background,
+            "maritime_layers": list(request.enabled_maritime_layers),
+            "product_mode": request.product_mode,
+        },
         "files": {
             "base_gpkg": "data/base.gpkg",
             "maritime_gpkg": "data/maritime.gpkg",
@@ -727,12 +800,11 @@ def prepare_research_package(
             "events_gpkg": "data/events.gpkg",
             "context_gpkg": "data/context.gpkg",
             "bathymetry": "data/bathymetry.tif",
-            "traffic_density": (
-                "data/normal-traffic-density.tif" if traffic_available else None
-            ),
+            "traffic_density": ("data/normal-traffic-density.tif" if traffic_available else None),
             "build_manifest": "metadata/mgrb-build.json",
             "source_manifest": "metadata/mgrb-source-manifest.json",
             "style_manifest": "metadata/mgrb-style-manifest.json",
+            "product_build_spec": "metadata/product-build-spec.json",
         },
     }
     spec_path = directories["metadata"] / "research-spec.json"

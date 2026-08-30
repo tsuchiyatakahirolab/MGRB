@@ -330,9 +330,7 @@ def test_offline_package_has_portable_data_and_manifests(monkeypatch, tmp_path: 
         package_data: Path,
     ) -> dict:
         base = package_data / "base.gpkg"
-        point = gpd.GeoDataFrame(
-            {"name": ["fixture"]}, geometry=[Point(122.0, 23.0)], crs=4326
-        )
+        point = gpd.GeoDataFrame({"name": ["fixture"]}, geometry=[Point(122.0, 23.0)], crs=4326)
         for layer in ("land", "coastline", "labels", "maritime_boundaries"):
             point.to_file(base, layer=layer, driver="GPKG", mode="a" if base.exists() else "w")
         with rasterio.open(
@@ -392,6 +390,7 @@ def test_offline_package_has_portable_data_and_manifests(monkeypatch, tmp_path: 
     spec = json.loads((package / "metadata" / "research-spec.json").read_text())
     assert all(not Path(value).is_absolute() for value in spec["files"].values() if value)
     assert not spec["availability"]["marine_regions"]
-    assert "UNAVAILABLE_OFFLINE_MODE" in (
-        package / "metadata" / "mgrb-source-manifest.json"
-    ).read_text()
+    assert (
+        "UNAVAILABLE_OFFLINE_MODE"
+        in (package / "metadata" / "mgrb-source-manifest.json").read_text()
+    )

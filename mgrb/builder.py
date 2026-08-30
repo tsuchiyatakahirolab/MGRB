@@ -55,9 +55,7 @@ def build_region(
     counts = {}
     mode = "w"
     if land:
-        counts["land"] = clip_vector(
-            land, gpkg, None, vector_bbox, vector_convention, "land", mode
-        )
+        counts["land"] = clip_vector(land, gpkg, None, vector_bbox, vector_convention, "land", mode)
         mode = "a"
     if coastline:
         counts["coastline"] = clip_vector(

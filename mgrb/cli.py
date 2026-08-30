@@ -4,21 +4,22 @@ import argparse
 import importlib.util
 import json
 import platform
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from . import __version__
 from .builder import build_region
 from .config import load_profiles, load_regions, load_yaml
+from .equidistance import EquidistanceParameters, build_equidistance_file
+from .product import ProductBuildSpec
 from .provenance import verify_manifest, write_manifest
 from .sources import SourceRegistry
 from .theme import resolve_theme
 from .verification import verify_generated_file
 from .workflow import (
     BuildRequest,
-    MaritimeBuildRequest,
     execute_build,
-    execute_maritime_build,
+    execute_product_build,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +48,12 @@ def main() -> None:
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("doctor")
 
+    ui = sub.add_parser("ui")
+    ui.add_argument("--host", default="127.0.0.1")
+    ui.add_argument("--port", type=int, default=8765)
+    ui.add_argument("--no-open", action="store_true")
+    ui.add_argument("--output-root", type=Path)
+
     r = sub.add_parser("regions")
     r.add_argument("--config", type=Path, default=Path("config/regions.yml"))
 
@@ -61,6 +68,14 @@ def main() -> None:
     vm = sub.add_parser("verify-manifest")
     vm.add_argument("manifest", type=Path)
     vm.add_argument("root", type=Path)
+
+    median = sub.add_parser("median-line")
+    median.add_argument("baseline_a", type=Path)
+    median.add_argument("baseline_b", type=Path)
+    median.add_argument("output", type=Path)
+    median.add_argument("--crs", required=True, help="Local metric computation CRS")
+    median.add_argument("--sample-spacing-m", type=float, default=5000.0)
+    median.add_argument("--balance-tolerance-m", type=float, default=750.0)
 
     b = sub.add_parser("build", aliases=["build-region"])
     b.add_argument("region")
@@ -92,10 +107,28 @@ def main() -> None:
     b.add_argument("--local-data", type=Path, action="append", default=[])
     b.add_argument("--offline", action="store_true")
     b.add_argument("--traffic-density", type=Path)
+    b.add_argument("--background", default="bathymetry")
+    b.add_argument(
+        "--maritime-layers",
+        default="eez_reference,territorial_sea",
+        help="Comma-separated semantic layer IDs",
+    )
+    b.add_argument("--input", type=Path, action="append", default=[])
+    b.add_argument("--include-public-observations", action="store_true")
 
     args = p.parse_args()
     if args.cmd == "doctor":
         raise SystemExit(doctor())
+    if args.cmd == "ui":
+        from .ui import serve
+
+        serve(
+            host=args.host,
+            port=args.port,
+            open_browser=not args.no_open,
+            output_root=args.output_root,
+        )
+        return
     if args.cmd == "regions":
         regions = load_regions(args.config)
         print(json.dumps({k: vars(v) for k, v in regions.items()}, indent=2))
@@ -112,6 +145,19 @@ def main() -> None:
         errors = verify_manifest(args.root, args.manifest)
         print(json.dumps({"ok": not errors, "errors": errors}, indent=2))
         raise SystemExit(1 if errors else 0)
+    if args.cmd == "median-line":
+        output = build_equidistance_file(
+            args.baseline_a,
+            args.baseline_b,
+            args.output,
+            computation_crs=args.crs,
+            parameters=EquidistanceParameters(
+                sample_spacing_m=args.sample_spacing_m,
+                balance_tolerance_m=args.balance_tolerance_m,
+            ),
+        )
+        print(output)
+        return
     if args.cmd in {"build", "build-region"}:
         regions = load_regions(args.config)
         if args.region not in regions:
@@ -125,20 +171,26 @@ def main() -> None:
             output_root = args.output_root or (
                 Path("build/maritime") if "," in str(args.output) else Path(args.output)
             )
-            result = execute_maritime_build(
-                MaritimeBuildRequest(
-                    area=region.name,
-                    output_root=output_root,
-                    build_id=args.output_name,
-                    start_date=args.start_date,
-                    end_date=args.end_date,
-                    actors=tuple(item.strip() for item in args.actors.split(",") if item.strip()),
-                    public_data=args.public_data,
-                    local_inputs=tuple(args.local_data),
-                    live_sources=not args.offline,
-                    traffic_density=args.traffic_density,
+            product_spec = ProductBuildSpec(
+                area=region.name,
+                background=args.background,
+                maritime_layers=tuple(
+                    item.strip() for item in args.maritime_layers.split(",") if item.strip()
                 ),
-                ROOT,
+                input_files=tuple(str(path) for path in (*args.local_data, *args.input)),
+                outputs=tuple(requested_outputs.split(",")),
+                include_public_observations=args.include_public_observations,
+                visible_footer=not args.no_visible_footer,
+                start_date=args.start_date.isoformat() if args.start_date else None,
+                end_date=args.end_date.isoformat() if args.end_date else None,
+                actors=tuple(item.strip() for item in args.actors.split(",") if item.strip()),
+            )
+            result, archive = execute_product_build(
+                product_spec,
+                output_root=output_root,
+                repository_root=ROOT,
+                build_id=args.output_name
+                or f"MGRB-{region.name}-{datetime.now(timezone.utc).strftime('%Y%m%d')}",
             )
             output_display = (
                 result.output.relative_to(ROOT).as_posix()
@@ -154,6 +206,7 @@ def main() -> None:
                         "qgis_project": str(result.qgis_project),
                         "elapsed_seconds": round(result.elapsed_seconds, 3),
                         "outputs": requested_outputs.split(","),
+                        "portable_archive": str(archive),
                     },
                     indent=2,
                 )

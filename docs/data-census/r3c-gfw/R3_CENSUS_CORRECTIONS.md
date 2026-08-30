@@ -74,3 +74,16 @@ no-matches are no-matches only in this versioned fishing-vessel archive.
 14. **Connector order:** P0 bulk archive hardening; then P1 authenticated Vessel
     Search identity resolver; then P1 Events client. Do not implement a raw-track
     connector until a supported lawful machine interface is demonstrated.
+
+## Historical snapshot / authenticated R3C-B follow-up
+
+The numerical answers above describe the pre-authentication R3C snapshot. In the
+2026-08-26 R3C-B follow-up, all 195 entities were queried through the official
+authenticated API with complete pagination: 179 entities matched, including all
+17 prior bulk matches and 26 of the previous 42 auth-unverified entities. Events
+were retrieved for 173 entities (57,922 event records). These do not constitute
+raw tracks. UI/CSV/GeoJSON validation remains manual and no raw position API
+endpoint was found in the documented interface inventory. See the local
+[authenticated owner review](../r3cb-gfw-auth/R3CB_OWNER_REVIEW.md) for the new
+evidence package; do not combine these counts with the historical bulk-only
+denominators or infer that unresolved identities are non-transmitting vessels.

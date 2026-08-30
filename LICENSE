@@ -1,0 +1,10 @@
+MGRB uses separate licences for software and authored content.
+
+- Software code: Apache License 2.0. See `LICENSE-CODE`.
+- MGRB-authored documentation, schemas, and cartographic styles: CC BY 4.0. See
+  `LICENSE-CONTENT`.
+- External datasets: the upstream licence recorded for each source applies. MGRB does not
+  relicense external data or transfer ownership rights. See `metadata/sources.yml` and each
+  generated `license_manifest.csv`.
+
+Copyright 2026 Takahiro Tsuchiya
