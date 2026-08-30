@@ -803,6 +803,21 @@ def build(spec_path: Path) -> dict:
     if product_mode:
         evidence_layers = product_evidence_layers
 
+    public_events = _layer(
+        project,
+        groups["07 EVENTS & ANNOTATIONS"],
+        files["events_gpkg"],
+        "events",
+        "SCSDI Geolocated Events",
+        "\"source_type\" = 'PUBLIC_EVENT'",
+    )
+    _point_style(public_events, "#c8432f")
+    _set_visibility(
+        groups["07 EVENTS & ANNOTATIONS"], public_events, public_events.featureCount() > 0
+    )
+    if public_events.featureCount() > 0:
+        evidence_layers.append(public_events)
+
     for name in ("Encounters", "Port Visits", "AIS Gaps", "User Notes"):
         placeholder = _layer(
             project,
@@ -847,6 +862,8 @@ def build(spec_path: Path) -> dict:
     source_names = ["GEBCO 2026"]
     if "pangaea_xue_long_2012" in source_ids:
         source_names.append("PANGAEA 891818 + World Bank shipping density")
+    elif "scsdi_dataverse_v1" in source_ids:
+        source_names.append("SCSDI News-event Data + Marine Regions")
     elif spec["availability"]["normal_traffic_density"]:
         source_names.append("World Bank shipping density + official public records")
     else:
@@ -866,7 +883,13 @@ def build(spec_path: Path) -> dict:
     evidence_entries = [
         (layer, _legend_label(layer))
         for layer in evidence_layers
-        if layer.name() in {"Observed Tracks", "Official Observations", "Inferred Segments"}
+        if layer.name()
+        in {
+            "Observed Tracks",
+            "Official Observations",
+            "Inferred Segments",
+            "SCSDI Geolocated Events",
+        }
         and _legend_layer_has_evidence(layer, build_data["evidence"])
     ]
     uncertain_candidates = [uncertain, ccg_uncertain, research_uncertain, fishing_uncertain]

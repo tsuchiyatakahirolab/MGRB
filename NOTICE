@@ -1,0 +1,11 @@
+MGRB — Maritime Geospatial Research Base
+Copyright 2026 Takahiro Tsuchiya
+
+MGRB software is licensed under the Apache License, Version 2.0.
+
+MGRB-authored documentation, schemas, and cartographic styles are made available
+under Creative Commons Attribution 4.0 International as stated in LICENSE-CONTENT.
+
+External datasets are not licensed under Apache-2.0 or CC BY 4.0 by MGRB. They retain
+their upstream licenses, attribution requirements, disclaimers, and legal status. See
+THIRD_PARTY_DATA.md, metadata/sources.yml, and each generated license_manifest.csv.

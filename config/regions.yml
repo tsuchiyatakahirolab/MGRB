@@ -100,6 +100,14 @@ regions:
     research_preset: true
     base_region: "south-china-sea"
     base_build_id: "south-china-sea-base"
+    public_evidence_sources: [scsdi_dataverse_v1]
+    media_title: "South China Sea Maritime Evidence"
+    media_subtitle: "SCSDI geolocated dispute events, GEBCO bathymetry, and maritime reference zones"
+    orientation_labels:
+      - {name: "South China Sea", longitude: 113.2, latitude: 13.5, role: sea, paper: true, media: true}
+      - {name: "Luzon", longitude: 121.0, latitude: 16.5, role: land, paper: true, media: true}
+      - {name: "Vietnam", longitude: 107.3, latitude: 15.5, role: land, paper: true, media: true}
+      - {name: "Borneo", longitude: 114.2, latitude: 2.8, role: land, paper: false, media: true}
     context_sources:
       land: [natural_earth_5_1_2, gshhg_2_3_7]
       coastline: [natural_earth_5_1_2, gshhg_2_3_7]

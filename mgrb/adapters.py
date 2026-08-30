@@ -14,13 +14,14 @@ from typing import ClassVar
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pyogrio
 import rasterio
 from rasterio.enums import Resampling
 from rasterio.io import MemoryFile
 from rasterio.merge import merge
 from rasterio.transform import Affine
 from rasterio.windows import Window, from_bounds
-from shapely.geometry import box
+from shapely.geometry import Point, box
 
 from .longitude import bbox_360_to_180_parts
 from .provenance import sha256
@@ -142,6 +143,10 @@ class MarineRegionsWFSAdapter:
                     raise SourceUnavailable(
                         f"Marine Regions WFS unavailable for {type_name}: {exc}"
                     ) from exc
+            # Some provider polygons are valid but exceed GDAL's conservative
+            # default per-feature GeoJSON size. The response is already pinned
+            # and hashed; allow GDAL to read the complete provider feature.
+            pyogrio.set_gdal_config_options({"OGR_GEOJSON_MAX_OBJ_SIZE": 0})
             frame = gpd.read_file(cache_path)
             if frame.crs is None:
                 frame = frame.set_crs(4326)
@@ -464,3 +469,101 @@ class PangaeaXueLong2012Adapter:
             "Published underway cruise-track position; provider cruise QC flag D retained as caveat"
         )
         return frame
+
+
+class ScsdiSouthChinaSeaEventsAdapter:
+    """Pinned public SCSDI geolocated-event release from Harvard Dataverse."""
+
+    source_id = "scsdi_dataverse_v1"
+    dataset_url = "https://doi.org/10.7910/DVN/GCBWA6"
+    download_url = "https://dataverse.harvard.edu/api/access/datafile/6457489"
+    expected_sha256 = "5d6f78a8df4336a651816b8c5fa3ce1e85f6bf03d0baf6ae04c7818d413a916f"
+
+    def acquire(self, cache_dir: Path, *, timeout: int = 180) -> Path:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        target = cache_dir / "SCSDI-geo-coded-event-data-v1.csv"
+        if not target.exists() or target.stat().st_size == 0:
+            partial = target.with_suffix(".csv.part")
+            request = urllib.request.Request(
+                self.download_url, headers={"User-Agent": "MGRB/1.0 public-data-build"}
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=timeout) as response:
+                    partial.write_bytes(response.read())
+                partial.replace(target)
+            except Exception as exc:
+                partial.unlink(missing_ok=True)
+                raise SourceUnavailable(f"SCSDI event-data download failed: {exc}") from exc
+        actual = sha256(target)
+        if actual != self.expected_sha256:
+            raise SourceUnavailable(
+                "SCSDI event source checksum changed; provider update requires review "
+                f"(expected {self.expected_sha256}, got {actual})."
+            )
+        return target
+
+    def read(self, cache_path: Path) -> gpd.GeoDataFrame:
+        path = self.acquire(cache_path.parent)
+        return self.parse(path)
+
+    def parse(self, path: Path) -> gpd.GeoDataFrame:
+        frame = pd.read_csv(path, encoding="cp1252")
+        required = {
+            "event_id",
+            "event_date",
+            "latitude",
+            "longitude",
+            "level",
+            "radius",
+            "source",
+        }
+        missing = sorted(required.difference(frame.columns))
+        if missing:
+            raise SourceUnavailable(f"SCSDI event source is missing columns: {missing}")
+        latitude = pd.to_numeric(frame["latitude"], errors="coerce")
+        longitude = pd.to_numeric(frame["longitude"], errors="coerce")
+        event_date = pd.to_datetime(
+            frame["event_date"], format="%m/%d/%y", errors="coerce", utc=True
+        )
+        precision_level = pd.to_numeric(frame["level"], errors="coerce").astype("Int64")
+        confidence = precision_level.map(
+            lambda value: (
+                "HIGH"
+                if pd.notna(value) and int(value) == 1
+                else "MEDIUM"
+                if pd.notna(value) and int(value) <= 4
+                else "LOW"
+            )
+        )
+        parsed = gpd.GeoDataFrame(
+            {
+                "event_id": frame["event_id"].astype(str),
+                "entity_id": "",
+                "actor_type": "UNKNOWN",
+                "event_type": "GEOCODED_DISPUTE_EVENT",
+                "start_time": event_date.dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "end_time": event_date.dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "confidence": confidence,
+                "source_type": "PUBLIC_EVENT",
+                "source_name": "SCSDI News-event Data v2.0",
+                "source_record_id": frame["event_id"].astype(str),
+                "source_url": self.dataset_url,
+                "license": "CC0 1.0",
+                "attribution": "Sexton & Ravanilla, South China Sea Data Initiative",
+                "participant_code": frame.get("event_id_cnty", "").fillna("").astype(str),
+                "location_precision_level": precision_level,
+                "uncertainty_radius_degrees": pd.to_numeric(frame["radius"], errors="coerce"),
+                "location_label": frame.get("location", "").fillna("").astype(str),
+                "location_note": frame.get("note_on_location", "").fillna("").astype(str),
+                "source_report": frame["source"].fillna("").astype(str),
+                "event_notes": frame.get("notes", "").fillna("").astype(str),
+                "report_count": pd.to_numeric(frame.get("number_of_report"), errors="coerce"),
+                "geometry": [
+                    Point(lon, lat) if pd.notna(lon) and pd.notna(lat) else None
+                    for lon, lat in zip(longitude, latitude, strict=False)
+                ],
+            },
+            geometry="geometry",
+            crs=4326,
+        )
+        return parsed[parsed.geometry.notna()].copy()

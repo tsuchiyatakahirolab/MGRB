@@ -1,6 +1,6 @@
 product:
-  formal_name: "Maritime Geospatial Research Base (MGRB)"
-  canonical_repository: null
+  formal_name: "MGRB — Maritime Geospatial Research Base"
+  canonical_repository: "https://github.com/tsuchiyatakahirolab/MGRB"
   release_persistent_identifier: null
   release_manifest_url: null
   release_manifest_sha256: null

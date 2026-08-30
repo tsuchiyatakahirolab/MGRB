@@ -18,6 +18,7 @@ from . import __version__
 from .adapters import (
     MarineRegionsWFSAdapter,
     PangaeaXueLong2012Adapter,
+    ScsdiSouthChinaSeaEventsAdapter,
     WorldBankTrafficDensityAdapter,
 )
 from .cartography import buffered_bbox, buffered_vector_bbox, resolve_layout_geometry
@@ -256,6 +257,17 @@ def _empty_events() -> gpd.GeoDataFrame:
     )
 
 
+def _filter_events(events: gpd.GeoDataFrame, region: Region) -> gpd.GeoDataFrame:
+    if events.empty:
+        return events.copy()
+    xmin, ymin, xmax, ymax = region.bbox
+    longitude = events.geometry.x
+    if region.longitude_convention == "360":
+        longitude = longitude.mod(360.0)
+    latitude = events.geometry.y
+    return events[longitude.between(xmin, xmax) & latitude.between(ymin, ymax)].copy()
+
+
 def _empty_maritime_layer() -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(
         {
@@ -326,55 +338,99 @@ def prepare_research_package(
         if request.include_public_observations
         else gpd.GeoDataFrame()
     )
-    public_track_records: list[dict] = []
+    public_evidence_records: list[dict] = []
+    public_events = _empty_events()
     for source_id in region.public_evidence_sources:
-        if source_id != PangaeaXueLong2012Adapter.source_id:
-            raise ValueError(f"Unsupported preset public evidence source: {source_id}")
         if not request.public_data or not request.live_sources:
             continue
-        adapter = PangaeaXueLong2012Adapter()
-        cache = adapter.acquire(root / "data" / "raw" / "r2-public")
-        loaded = adapter.read(cache)
-        normalized_track = normalize_evidence(
-            loaded,
-            registry,
-            build_id=request.build_id,
-            source_type="PUBLIC_TRACK",
-            source_name="PANGAEA 891818 Xue Long cruise 76XL20120717",
-            license_text="CC BY 3.0",
-            attribution=("Chen, Cai & Ouyang (2018), PANGAEA, doi:10.1594/PANGAEA.891818"),
-            raw_reference=adapter.download_url,
-        )
-        normalized_track = _filter_observations(normalized_track, request, region)
-        observations = pd.concat([observations, normalized_track], ignore_index=True)
-        observations = gpd.GeoDataFrame(observations, geometry="geometry", crs=4326)
-        public_track_records.append(
-            {
-                "source_id": source_id,
-                "provider": "PANGAEA / Third Institute of Oceanography, SOA",
-                "dataset": "Xue Long cruise 76XL20120717 underway track",
-                "version_or_date": "2018-07-02 publication",
-                "original_url": adapter.dataset_url,
-                "download_timestamp_utc": timestamp,
-                "license": "CC BY 3.0",
-                "allowed_use": "research, publication, and redistribution with attribution",
-                "attribution_required": True,
-                "redistribution_allowed": True,
-                "commercial_use_known": True,
-                "spatial_resolution": "3,186 published underway position records",
-                "temporal_coverage": "2012-07-17 through 2012-09-08",
-                "source_sha256": sha256(cache),
-                "availability": "AVAILABLE",
-                "transformations": [
-                    "parse PANGAEA tab-delimited dataset",
-                    "canonical evidence normalization",
-                    "clip to preset area and period",
-                    "deterministic track QC and segmentation",
-                ],
-                "normalized_position_count": len(normalized_track),
-                "quality_caveat": "Provider cruise QC flag D",
-            }
-        )
+        if source_id == PangaeaXueLong2012Adapter.source_id:
+            adapter = PangaeaXueLong2012Adapter()
+            cache = adapter.acquire(root / "data" / "raw" / "r2-public")
+            loaded = adapter.read(cache)
+            normalized_track = normalize_evidence(
+                loaded,
+                registry,
+                build_id=request.build_id,
+                source_type="PUBLIC_TRACK",
+                source_name="PANGAEA 891818 Xue Long cruise 76XL20120717",
+                license_text="CC BY 3.0",
+                attribution=("Chen, Cai & Ouyang (2018), PANGAEA, doi:10.1594/PANGAEA.891818"),
+                raw_reference=adapter.download_url,
+            )
+            normalized_track = _filter_observations(normalized_track, request, region)
+            observations = pd.concat([observations, normalized_track], ignore_index=True)
+            observations = gpd.GeoDataFrame(observations, geometry="geometry", crs=4326)
+            public_evidence_records.append(
+                {
+                    "source_id": source_id,
+                    "provider": "PANGAEA / Third Institute of Oceanography, SOA",
+                    "dataset": "Xue Long cruise 76XL20120717 underway track",
+                    "version_or_date": "2018-07-02 publication",
+                    "original_url": adapter.dataset_url,
+                    "download_timestamp_utc": timestamp,
+                    "license": "CC BY 3.0",
+                    "allowed_use": "research, publication, and redistribution with attribution",
+                    "attribution_required": True,
+                    "redistribution_allowed": True,
+                    "commercial_use_known": True,
+                    "spatial_resolution": "3,186 published underway position records",
+                    "temporal_coverage": "2012-07-17 through 2012-09-08",
+                    "source_sha256": sha256(cache),
+                    "availability": "AVAILABLE",
+                    "transformations": [
+                        "parse PANGAEA tab-delimited dataset",
+                        "canonical evidence normalization",
+                        "clip to preset area and period",
+                        "deterministic track QC and segmentation",
+                    ],
+                    "normalized_position_count": len(normalized_track),
+                    "quality_caveat": "Provider cruise QC flag D",
+                }
+            )
+        elif source_id == ScsdiSouthChinaSeaEventsAdapter.source_id:
+            adapter = ScsdiSouthChinaSeaEventsAdapter()
+            cache = adapter.acquire(root / "data" / "raw" / "scsdi")
+            loaded_events = _filter_events(adapter.read(cache), region)
+            public_events = gpd.GeoDataFrame(
+                pd.concat([public_events, loaded_events], ignore_index=True),
+                geometry="geometry",
+                crs=4326,
+            )
+            public_evidence_records.append(
+                {
+                    "source_id": source_id,
+                    "provider": "South China Sea Data Initiative / Harvard Dataverse",
+                    "dataset": "South China Sea Data Initiative: News-event Data",
+                    "version_or_date": "2.0 (2022-09-08)",
+                    "original_url": adapter.dataset_url,
+                    "provider_download_url": adapter.download_url,
+                    "download_timestamp_utc": timestamp,
+                    "license": "CC0 1.0",
+                    "allowed_use": "public-domain dedication; attribution retained by MGRB",
+                    "attribution_required": False,
+                    "redistribution_allowed": True,
+                    "commercial_use_known": True,
+                    "spatial_resolution": (
+                        f"{len(loaded_events)} geolocated records within the research extent"
+                    ),
+                    "temporal_coverage": "2012 through 2020",
+                    "source_sha256": sha256(cache),
+                    "availability": "AVAILABLE",
+                    "transformations": [
+                        "parse provider CSV as Windows-1252",
+                        "preserve event identity and location-precision level",
+                        "create point geometry from published coordinates",
+                        "clip to the South China Sea research extent",
+                    ],
+                    "normalized_event_count": len(loaded_events),
+                    "quality_caveat": (
+                        "Event points are not vessel tracks; provider location uncertainty "
+                        "levels and radii are retained."
+                    ),
+                }
+            )
+        else:
+            raise ValueError(f"Unsupported preset public evidence source: {source_id}")
     local_source_records: list[dict] = []
     for local_input in request.local_inputs:
         local, import_summary = normalize_user_input(
@@ -415,12 +471,14 @@ def prepare_research_package(
     maritime_path = directories["data"] / "maritime.gpkg"
     _write_geodataframe(qc.cleaned_points, observations_path, "observations")
     _write_geodataframe(qc.track_segments, tracks_path, "track_segments")
-    _write_geodataframe(_empty_events(), events_path, "events")
+    _write_geodataframe(public_events, events_path, "events")
     _write_geodataframe(_orientation_labels(region), context_path, "orientation_labels")
 
     entity_ids = set(qc.cleaned_points["entity_id"].dropna().astype(str))
     registry_records = registry.subset(entity_ids)
     registry_frame = pd.DataFrame(registry_records)
+    if registry_frame.empty and not len(registry_frame.columns):
+        registry_frame = pd.DataFrame({"entity_id": pd.Series(dtype="str")})
     for column in ("aliases", "former_names", "source_refs"):
         if column in registry_frame:
             registry_frame[column] = registry_frame[column].map(json.dumps)
@@ -428,7 +486,9 @@ def prepare_research_package(
 
     source_warnings: list[str] = []
     if region.public_evidence_sources and (not request.public_data or not request.live_sources):
-        source_warnings.append("Preset public track unavailable: offline/public-data-disabled mode")
+        source_warnings.append(
+            "Preset public evidence unavailable: offline/public-data-disabled mode"
+        )
     marine_records: list[dict] = []
     if request.public_data and request.live_sources:
         adapter = marine_adapter or MarineRegionsWFSAdapter()
@@ -544,7 +604,7 @@ def prepare_research_package(
             record["normalized_fixture_sha256"] = seed_hash
             source_records.append(record)
     source_records.extend(marine_records)
-    source_records.extend(public_track_records)
+    source_records.extend(public_evidence_records)
     source_records.extend(local_source_records)
     traffic_record = source_registry.get("world_bank_shipping_density_2021").manifest_record(
         ["normal_traffic_density"],
@@ -676,6 +736,8 @@ def prepare_research_package(
                 .items()
             },
             "evidence_methods": qc.cleaned_points["observation_method"].value_counts().to_dict(),
+            "public_events": len(public_events),
+            "public_event_types": public_events["event_type"].value_counts().to_dict(),
             "inferred_entity_integrity": True,
         },
         "restricted_raw_data_included": False,
@@ -737,12 +799,10 @@ def prepare_research_package(
                 "background": request.background,
                 "maritime_layers": list(request.enabled_maritime_layers),
                 "input_datasets": [
-                    {"filename": path.name, "sha256": sha256(path)}
-                    for path in request.local_inputs
+                    {"filename": path.name, "sha256": sha256(path)} for path in request.local_inputs
                 ],
                 "field_maps": {
-                    Path(path).name: mapping
-                    for path, mapping in (request.field_maps or {}).items()
+                    Path(path).name: mapping for path, mapping in (request.field_maps or {}).items()
                 },
                 "include_public_observations": request.include_public_observations,
                 "visible_footer": request.visible_footer,

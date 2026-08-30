@@ -1,12 +1,13 @@
 cff-version: 1.2.0
 message: "If you use MGRB in research, publications, reports, or figures, cite the exact release used and retain upstream data attribution."
-title: "Maritime Geospatial Research Base (MGRB)"
+title: "MGRB — Maritime Geospatial Research Base"
 type: software
 authors:
   - family-names: Tsuchiya
     given-names: Takahiro
 version: 1.0.0
 license: Apache-2.0
+repository-code: "https://github.com/tsuchiyatakahirolab/MGRB"
 abstract: >-
   A local, reproducible product that automates public maritime geospatial source integration,
   cartographic defaults, evidence-safe track processing, and portable QGIS research packages.

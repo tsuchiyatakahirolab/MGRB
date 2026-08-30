@@ -126,6 +126,23 @@ sources:
     commercial_use_known: true
     spatial_resolution: "3,186 underway geocoded position records (47,790 tabular data values across measured variables)"
     temporal_coverage: "2012-07-17T17:38:49 through 2012-09-08T18:12:31"
+  scsdi_dataverse_v1:
+    title: "South China Sea Data Initiative: News-event Data"
+    provider: "South China Sea Data Initiative / Harvard Dataverse"
+    version: "2.0"
+    released: "2022-09-08"
+    doi: "10.7910/DVN/GCBWA6"
+    homepage: "https://doi.org/10.7910/DVN/GCBWA6"
+    download: "https://dataverse.harvard.edu/api/access/datafile/6457489"
+    licence: "CC0 1.0"
+    acquisition: "Pinned Harvard Dataverse file endpoint with SHA-256 verification."
+    role: "public_geolocated_maritime_events"
+    allowed_use: "public-domain dedication; MGRB retains scholarly attribution"
+    attribution_required: false
+    redistribution_allowed: true
+    commercial_use_known: true
+    spatial_resolution: "1,241 records with provider precision levels and uncertainty radii"
+    temporal_coverage: "2012 through 2020"
   japan_joint_staff_public_observations:
     title: "Chinese naval vessel movement press releases"
     provider: "Japan Ministry of Defense, Joint Staff"

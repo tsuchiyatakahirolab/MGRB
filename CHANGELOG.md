@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 - release candidate
+## 1.0.0 - 2026-08-30
 
 Initial public-release implementation target.
 
@@ -20,5 +20,6 @@ Initial public-release implementation target.
 - Added a neutral portable QGIS product layer tree and reproducible selection-state manifests.
 - Added a documented computed median/equidistance reference capability whose legal status is
   always `COMPUTED_REFERENCE`.
-- Added a redistributable PANGAEA Xue Long public demo with 3,186 true-track positions.
+- Added a CC0 South China Sea Data Initiative flagship with event uncertainty preserved.
+- Added a redistributable PANGAEA Xue Long secondary demo with 3,186 true-track positions.
 - Added deterministic portable package ZIPs, journal-width previews and release-security audit.

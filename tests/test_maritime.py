@@ -14,6 +14,7 @@ from shapely.geometry import Point
 
 from mgrb.adapters import (
     PangaeaXueLong2012Adapter,
+    ScsdiSouthChinaSeaEventsAdapter,
     WorldBankTrafficDensityAdapter,
     evidence_adapter_catalog,
 )
@@ -57,6 +58,9 @@ def test_research_area_presets_resolve_gis_defaults():
     rich = regions["xue-long-arctic-2012"]
     assert rich.public_evidence_sources == ("pangaea_xue_long_2012",)
     assert rich.default_actors == ("RESEARCH_SURVEY",)
+    flagship = regions["south-china-sea"]
+    assert flagship.public_evidence_sources == ("scsdi_dataverse_v1",)
+    assert flagship.media_title == "South China Sea Maritime Evidence"
 
 
 def test_scale_bar_uses_rounded_kilometre_intervals():
@@ -306,6 +310,25 @@ def test_pangaea_public_track_adapter_ingests_documented_positions(tmp_path: Pat
     assert set(result.track_segments["segment_type"]) == {"OBSERVED_TRACK"}
     assert result.track_segments.iloc[0]["start_entity_id"] == "research-xue-long"
     assert result.track_segments.iloc[0]["end_entity_id"] == "research-xue-long"
+
+
+def test_scsdi_adapter_preserves_event_semantics_and_uncertainty(tmp_path: Path):
+    sample = tmp_path / "scsdi.csv"
+    sample.write_text(
+        "event_id,event_id_cnty,event_date,year,time_precision,latitude,longitude,"
+        "level,radius,note_on_location,location,source,notes,number_of_report\n"
+        "CNPH_200101,CN/PH,01/01/20,2020,,12.5,116.2,2,0.4,reported,"
+        "South China Sea,https://example.test/report,public event,3\n",
+        encoding="cp1252",
+    )
+    events = ScsdiSouthChinaSeaEventsAdapter().parse(sample)
+    assert len(events) == 1
+    assert events.iloc[0]["source_type"] == "PUBLIC_EVENT"
+    assert events.iloc[0]["event_type"] == "GEOCODED_DISPUTE_EVENT"
+    assert events.iloc[0]["confidence"] == "MEDIUM"
+    assert events.iloc[0]["location_precision_level"] == 2
+    assert events.iloc[0]["uncertainty_radius_degrees"] == pytest.approx(0.4)
+    assert events.iloc[0]["license"] == "CC0 1.0"
 
 
 def test_public_observation_seed_contains_no_unsourced_militia_label():
