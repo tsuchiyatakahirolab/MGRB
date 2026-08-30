@@ -225,7 +225,8 @@ def normalize_evidence(
     result["observed_or_inferred"] = result["observed_or_inferred"].fillna("OBSERVED")
     result["license"] = result["license"].fillna(license_text)
     result["attribution"] = result["attribution"].fillna(attribution)
-    result["raw_record_reference"] = result["raw_record_reference"].fillna(raw_reference)
+    if raw_reference is not None:
+        result["raw_record_reference"] = result["raw_record_reference"].fillna(raw_reference)
     result["processing_notes"] = result["processing_notes"].fillna("Normalized by MGRB")
     result["build_id"] = build_id
     result["timestamp_end"] = result["timestamp_end"].where(
