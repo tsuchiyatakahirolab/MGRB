@@ -47,6 +47,9 @@ class MaritimeBuildRequest:
     background: str = "bathymetry"
     enabled_maritime_layers: tuple[str, ...] = ("eez_reference", "territorial_sea")
     field_maps: dict[str, dict[str, str]] | None = None
+    input_kinds: dict[str, str] | None = None
+    input_metadata: dict[str, dict[str, str]] | None = None
+    context_layers: tuple[str, ...] = ()
     include_public_observations: bool = True
     product_mode: bool = False
     regions_config: Path | None = None
@@ -180,6 +183,9 @@ def execute_maritime_build(
             background=request.background,
             enabled_maritime_layers=request.enabled_maritime_layers,
             field_maps=request.field_maps,
+            input_kinds=request.input_kinds,
+            input_metadata=request.input_metadata,
+            context_layers=request.context_layers,
             include_public_observations=request.include_public_observations,
             product_mode=request.product_mode,
             regions_config=request.regions_config,
@@ -230,6 +236,9 @@ def execute_maritime_build(
 
 def make_portable_zip(package_dir: Path) -> Path:
     """Create a deterministic-order portable archive beside a completed package."""
+    from .firewall import assert_public_package
+
+    assert_public_package(package_dir)
     archive = package_dir.with_suffix(".zip")
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as output:
         for path in sorted(package_dir.rglob("*")):
@@ -322,6 +331,9 @@ def execute_product_build(
         background=spec.background,
         enabled_maritime_layers=spec.maritime_layers,
         field_maps=spec.field_maps,
+        input_kinds=spec.input_kinds,
+        input_metadata=spec.input_metadata,
+        context_layers=spec.context_layers,
         include_public_observations=spec.include_public_observations,
         product_mode=True,
         regions_config=regions_config,

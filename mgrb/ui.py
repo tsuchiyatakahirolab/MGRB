@@ -186,6 +186,10 @@ class MGRBUIHandler(BaseHTTPRequestHandler):
         inspections = []
         field_maps: dict[str, dict[str, str]] = {}
         requested_maps = payload.get("field_maps") or {}
+        requested_kinds = payload.pop("input_kinds", {}) or {}
+        requested_metadata = payload.pop("input_metadata", {}) or {}
+        input_kinds: dict[str, str] = {}
+        input_metadata: dict[str, dict[str, str]] = {}
         for token in tokens:
             if token not in self.state.uploads:
                 raise ValueError(f"Unknown or expired upload token: {token}")
@@ -194,8 +198,13 @@ class MGRBUIHandler(BaseHTTPRequestHandler):
             inspections.append(inspect_input(path).to_dict())
             if token in requested_maps:
                 field_maps[str(path)] = dict(requested_maps[token])
+            input_kinds[str(path)] = str(requested_kinds.get(token) or "TRACK")
+            if token in requested_metadata:
+                input_metadata[str(path)] = dict(requested_metadata[token])
         payload["input_files"] = paths
         payload["field_maps"] = field_maps
+        payload["input_kinds"] = input_kinds
+        payload["input_metadata"] = input_metadata
         return ProductBuildSpec.from_dict(payload), inspections
 
     @staticmethod
@@ -280,7 +289,7 @@ display:grid;grid-template-columns:minmax(360px,480px) minmax(480px,1fr);gap:24p
 font-weight:800}.lead{font:600 25px/1.15 Georgia,serif;margin:7px 0 20px}.step{padding:17px 0;
 border-top:1px solid #e5e6df}.step:first-of-type{border-top:0}.step h2{font-size:12px;
 letter-spacing:.12em;margin:0 0 9px}.step h2 span{color:var(--accent);margin-right:7px}
-select,input[type=text]{width:100%;padding:11px 12px;border:1px solid #bbc9c8;
+select,input[type=text],input[type=date]{width:100%;padding:11px 12px;border:1px solid #bbc9c8;
 border-radius:8px;background:white;color:var(--ink);font:inherit}.check-grid{display:grid;
 grid-template-columns:1fr 1fr;gap:7px}.check{display:flex;gap:8px;align-items:flex-start;
 font-size:13px;padding:7px;border-radius:7px}.check:hover{background:#f1f4ef}
@@ -310,6 +319,9 @@ color:var(--muted);border-top:1px solid var(--line)}.result{padding:18px 20px;mi
 .result h3{margin:0 0 7px;font:600 15px Georgia}.result pre{white-space:pre-wrap;font-size:11px;
 background:#17292f;color:#e9f3ef;border-radius:8px;padding:12px;max-height:220px;overflow:auto}
 .hidden{display:none}@media(max-width:960px){main{grid-template-columns:1fr}#preview{height:440px}}
+details{margin-top:8px;border:1px solid var(--line);border-radius:9px;padding:8px}
+summary{cursor:pointer;font-size:12px;font-weight:700}.source-note{display:block;color:var(--muted);
+font-size:10px;margin-top:2px}.date-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 </style>
 </head>
 <body>
@@ -324,14 +336,18 @@ background:#17292f;color:#e9f3ef;border-radius:8px;padding:12px;max-height:220px
 placeholder="west, south, east, north"></div></div>
 <div class="step"><h2><span>02</span>BACKGROUND</h2><select id="background"></select></div>
 <div class="step"><h2><span>03</span>MARITIME LAYERS</h2>
-<div id="layers" class="check-grid"></div></div>
+<div id="layers" class="check-grid"></div>
+<details><summary>Context and evidence layers</summary><div id="contextLayers"></div></details></div>
 <div class="step"><h2><span>04</span>VESSEL / USER DATA</h2>
 <div id="drop" class="drop"><strong>Drop CSV / GeoJSON / GeoPackage here</strong>
 <small>or choose a local file · nothing is uploaded to a cloud service</small><br>
 <button class="secondary" id="choose">Choose file</button>
 <input id="file" class="hidden" type="file" accept=".csv,.tsv,.geojson,.json,.gpkg,.shp"></div>
 <div id="files"></div></div>
-<div class="step"><h2><span>05</span>OUTPUT</h2><div id="outputs" class="check-grid"></div></div>
+<div class="step"><h2><span>05</span>TIME FILTER</h2><div class="date-grid">
+<label>Start date<input id="startDate" type="date"></label>
+<label>End date<input id="endDate" type="date"></label></div></div>
+<div class="step"><h2><span>06</span>OUTPUT</h2><div id="outputs" class="check-grid"></div></div>
 <button class="build" id="build">BUILD RESEARCH PACKAGE</button>
 </section>
 <section class="right">
@@ -346,12 +362,19 @@ layer-state and data inspection. Paper, media and QGIS outputs use the accepted 
 </section>
 </main>
 <script>
-const state={catalog:null,uploads:[],fieldMaps:{}};
+const state={catalog:null,uploads:[],fieldMaps:{},inputKinds:{},inputMetadata:{}};
 const $=id=>document.getElementById(id);
 async function init(){state.catalog=await (await fetch('/api/catalog')).json();
 fillSelect('area',state.catalog.areas);fillSelect('background',state.catalog.backgrounds);
 state.catalog.maritime_layers.forEach(x=>$('layers').append(check(x.id,x.label,
 state.catalog.defaults.maritime_layers.includes(x.id),'layer')));
+Object.entries(state.catalog.context_layer_groups).forEach(([group,items])=>{const details=
+document.createElement('details');const summary=document.createElement('summary');summary.textContent=
+group.replaceAll('_',' ');details.append(summary);items.filter(x=>x.source_class!=='REFERENCE_ONLY')
+.forEach(x=>{const item=check(x.layer_id,x.dataset,Boolean(x.default_enabled),'context');
+item.title=x.provider+' · '+x.license+' · '+x.attribution;const note=document.createElement('span');
+note.className='source-note';note.textContent=x.provider+' · '+x.license;item.append(note);details.append(item)});
+$('contextLayers').append(details)});
 state.catalog.outputs.forEach(x=>$('outputs').append(check(x,x==='qgis'?'QGIS Research Package':
 x[0].toUpperCase()+x.slice(1),true,'output')));bind();updatePreview()}
 function fillSelect(id,items){items.forEach(x=>{const o=document.createElement('option');o.value=x.id;
@@ -375,7 +398,15 @@ d.innerHTML='<b></b><div class="metrics"><div class="metric"><strong>'+Number(x.
 '</strong><small>records</small></div><div class="metric"><strong></strong><small>format</small></div>'+
 '<div class="metric"><strong></strong><small>schema</small></div></div>';d.querySelector('b').textContent=
 x.filename;const strong=d.querySelectorAll('.metric strong');strong[1].textContent=x.format.toUpperCase();
-strong[2].textContent=x.confidence;if(x.requires_confirmation){const form=document.createElement('div');
+strong[2].textContent=x.confidence;const kind=document.createElement('select');
+state.catalog.input_kinds.forEach(value=>{const option=document.createElement('option');option.value=value;
+option.textContent=value.replaceAll('_',' ');kind.append(option)});kind.value='TRACK';
+let form=null;kind.onchange=()=>{state.inputKinds[data.token]=kind.value;const positional=
+['TRACK','OFFICIAL_OBSERVATION'].includes(kind.value);if(form)form.style.display=positional?'':'none';
+const qc=d.querySelector('.qc');if(qc)qc.style.display=positional?'':'none';strong[2].textContent=
+positional?x.confidence:'SEMANTIC TYPE'};
+state.inputKinds[data.token]='TRACK';d.append(kind);
+if(x.requires_confirmation){form=document.createElement('div');
 form.className='warning';const why=document.createElement('div');why.textContent='Confirm schema: '+
 x.reasons.join('; ');form.append(why);const fields=['latitude','longitude','timestamp_start','entity_id'];
 const selects={};fields.forEach(field=>{const label=document.createElement('label');label.textContent=field+' ';
@@ -401,12 +432,17 @@ function selected(kind){return [...document.querySelectorAll('input[data-kind="'
 function payload(){let custom=null;if($('area').value==='custom'){custom=$('customExtent').value.split(',')
 .map(Number)}return{area:$('area').value,background:$('background').value,
 maritime_layers:selected('layer'),outputs:selected('output'),custom_extent:custom,
-upload_tokens:state.uploads.map(x=>x.token),field_maps:state.fieldMaps}}
+context_layers:selected('context'),start_date:$('startDate').value||null,end_date:$('endDate').value||null,
+upload_tokens:state.uploads.map(x=>x.token),field_maps:state.fieldMaps,input_kinds:state.inputKinds,
+input_metadata:state.inputMetadata}}
 function updatePreview(){if(!state.catalog)return;const area=state.catalog.areas.find(x=>x.id===$('area').value);
 $('areaLabel').textContent=area.label;$('areaPurpose').textContent=area.purpose||'Define coordinates below';
 $('profile').textContent=(area.profile||'adaptive').toUpperCase()+' · CANONICAL QGIS OUTPUT';
 const chips=$('chips');chips.innerHTML='';selected('layer').forEach(id=>{const c=document.createElement('span');
 c.className='chip';c.textContent=state.catalog.maritime_layers.find(x=>x.id===id).label;chips.append(c)});
+selected('context').forEach(id=>{const all=Object.values(state.catalog.context_layer_groups).flat();
+const c=document.createElement('span');c.className='chip';c.textContent=all.find(x=>x.layer_id===id).dataset;
+chips.append(c)});
 drawTracks();const bg=$('background').value;$('preview').style.filter=bg==='minimal-grayscale'?'grayscale(1)':'none';
 $('preview').style.background=bg==='none'?'#fffdf7':''}
 function drawTracks(){const points=state.uploads.flatMap(x=>x.inspection.sample_positions||[]),svg=$('trackSvg');

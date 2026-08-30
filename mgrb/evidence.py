@@ -70,6 +70,7 @@ CANONICAL_COLUMNS = (
 )
 SEGMENT_COLUMNS = (
     "segment_id",
+    "dataset_id",
     "entity_id",
     "start_observation_id",
     "end_observation_id",
@@ -483,9 +484,13 @@ def _build_segments(
     config: QualityControlConfig,
 ) -> gpd.GeoDataFrame:
     records: list[dict[str, object]] = []
-    for entity_id, group in cleaned.assign(
+    grouping = ["entity_id"]
+    if "dataset_id" in cleaned:
+        grouping.insert(0, "dataset_id")
+    for group_key, group in cleaned.assign(
         _time=pd.to_datetime(cleaned["timestamp_start"], errors="coerce", utc=True)
-    ).groupby("entity_id"):
+    ).groupby(grouping):
+        entity_id = group_key[-1] if isinstance(group_key, tuple) else group_key
         ordered = group.sort_values("_time")
         source_types = set(ordered["source_type"].astype(str))
         if source_types and source_types <= DENSE_OBSERVED_SOURCE_TYPES:
@@ -561,6 +566,7 @@ def _segment_record(
     digest = hashlib.sha256("|".join(observation_ids).encode("utf-8")).hexdigest()[:16]
     return {
         "segment_id": f"seg-{digest}",
+        "dataset_id": str(rows[0].get("dataset_id") or rows[0].get("source_name") or "dataset"),
         "entity_id": entity,
         "start_observation_id": observation_ids[0],
         "end_observation_id": observation_ids[-1],

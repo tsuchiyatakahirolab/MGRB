@@ -1,0 +1,239 @@
+schema: mgrb-data-layer-registry-1.1
+layers:
+  marine_regions_territorial_sea:
+    provider: Flanders Marine Institute (VLIZ), Marine Regions
+    dataset: World 12 Nautical Miles Zone, version 4
+    url: https://doi.org/10.14284/633
+    evidence_context_type: MARITIME_JURISDICTION_REFERENCE
+    geographic_coverage: Global
+    temporal_coverage: Released 2023-10-25
+    resolution: Provider vector geometry
+    format: OGC WFS / GeoPackage
+    acquisition: Official Marine Regions WFS with cached provider response
+    license: CC BY 4.0
+    attribution: Flanders Marine Institute (2023), Maritime Boundaries Geodatabase
+    redistribution: Allowed with attribution
+    commercial_use: Allowed under CC BY 4.0
+    version_date: v4 / 2023-10-25
+    connector_status: IMPLEMENTED
+    source_class: OPEN
+    ui_group: MARITIME_JURISDICTION
+    default_enabled: true
+    caveat: Sourced reference geometry, not a self-authenticating legal boundary
+  marine_regions_contiguous_zone:
+    provider: Flanders Marine Institute (VLIZ), Marine Regions
+    dataset: World 24 Nautical Miles Zone, version 4
+    url: https://doi.org/10.14284/634
+    evidence_context_type: MARITIME_JURISDICTION_REFERENCE
+    geographic_coverage: Global
+    temporal_coverage: Released 2023-10-25
+    resolution: Provider vector geometry
+    format: OGC WFS / GeoPackage
+    acquisition: Official Marine Regions WFS with cached provider response
+    license: CC BY 4.0
+    attribution: Flanders Marine Institute (2023), Maritime Boundaries Geodatabase
+    redistribution: Allowed with attribution
+    commercial_use: Allowed under CC BY 4.0
+    version_date: v4 / 2023-10-25
+    connector_status: IMPLEMENTED
+    source_class: OPEN
+    ui_group: MARITIME_JURISDICTION
+    default_enabled: false
+    caveat: Sourced reference geometry, not a self-authenticating legal boundary
+  marine_regions_eez:
+    provider: Flanders Marine Institute (VLIZ), Marine Regions
+    dataset: Maritime Boundaries Geodatabase EEZ, version 12
+    url: https://doi.org/10.14284/632
+    evidence_context_type: MARITIME_JURISDICTION_REFERENCE
+    geographic_coverage: Global
+    temporal_coverage: Released 2023-10-25
+    resolution: Provider vector geometry
+    format: OGC WFS / GeoPackage
+    acquisition: Official Marine Regions WFS with cached provider response
+    license: CC BY 4.0
+    attribution: Flanders Marine Institute (2023), Maritime Boundaries Geodatabase
+    redistribution: Allowed with attribution
+    commercial_use: Allowed under CC BY 4.0
+    version_date: v12 / 2023-10-25
+    connector_status: IMPLEMENTED
+    source_class: OPEN
+    ui_group: MARITIME_JURISDICTION
+    default_enabled: true
+    caveat: Sourced reference geometry, not a self-authenticating legal boundary
+  gebco_bathymetry:
+    provider: GEBCO Bathymetric Compilation Group
+    dataset: GEBCO_2026 Grid
+    url: https://doi.org/10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa
+    evidence_context_type: PHYSICAL_BATHYMETRY
+    geographic_coverage: Global ocean
+    temporal_coverage: 2026 compilation
+    resolution: 15 arc-second
+    format: NetCDF / GeoTIFF derivative
+    acquisition: Provider download, subset, buffered warp and deterministic cache
+    license: Public-domain information product; GEBCO terms apply
+    attribution: GEBCO Compilation Group (2026) GEBCO_2026 Grid
+    redistribution: Derivatives allowed with attribution and disclaimer
+    commercial_use: Known allowed subject to GEBCO terms
+    version_date: 2026-04-23
+    connector_status: IMPLEMENTED
+    source_class: OPEN
+    ui_group: PHYSICAL
+    default_enabled: true
+  world_bank_shipping_density:
+    provider: World Bank / International Monetary Fund
+    dataset: Global Shipping Traffic Density
+    url: https://datacatalog.worldbank.org/search/dataset/0037580/global-shipping-traffic-density
+    evidence_context_type: ACTIVITY_AGGREGATE
+    geographic_coverage: Global navigable waters
+    temporal_coverage: AIS aggregation 2015-01 through 2021-02
+    resolution: 0.005 degree grid
+    format: Raster archive / GeoTIFF subset
+    acquisition: Provider archive imported into a deterministic buffered subset
+    license: CC BY 4.0
+    attribution: World Bank Global Shipping Traffic Density
+    redistribution: Allowed with attribution
+    commercial_use: Allowed under CC BY 4.0
+    version_date: 2021-05-03
+    connector_status: IMPLEMENTED
+    source_class: OPEN
+    ui_group: TRAFFIC
+    default_enabled: false
+    caveat: Historical density aggregate, never an individual vessel track
+  scsdi_events:
+    provider: South China Sea Data Initiative / Harvard Dataverse
+    dataset: News-event Data 2.0
+    url: https://doi.org/10.7910/DVN/GCBWA6
+    evidence_context_type: EVENT_GEOMETRY
+    geographic_coverage: South China Sea
+    temporal_coverage: 2012 through 2020
+    resolution: 1,241 geolocated records with provider precision classes
+    format: CSV / GeoPackage derivative
+    acquisition: Pinned Harvard Dataverse file endpoint and SHA-256 cache
+    license: CC0 1.0
+    attribution: South China Sea Data Initiative, News-event Data 2.0
+    redistribution: Allowed
+    commercial_use: Allowed under CC0
+    version_date: v2.0 / 2022-09-08
+    connector_status: IMPLEMENTED
+    source_class: OPEN
+    ui_group: EVENT_EVIDENCE
+    default_enabled: false
+    caveat: Event points are not track positions
+  official_observations:
+    provider: Audited government sources
+    dataset: Japan MOD/JCG/MOFA and Taiwan CGA factual observation records
+    url: https://www.mod.go.jp/js/activity/domestic/keikai2025.html
+    evidence_context_type: OFFICIAL_OBSERVATION
+    geographic_coverage: East Asia and Western Pacific, source dependent
+    temporal_coverage: Individual dated releases
+    resolution: Exact, text-relative, approximate or provider-map-derived point
+    format: CSV / GeoJSON import model
+    acquisition: Citation-preserving factual normalization; source documents not redistributed
+    license: Source-specific government terms; derived facts only by default
+    attribution: Original issuing authority and source URL per record
+    redistribution: DERIVED_FACTS_ONLY
+    commercial_use: Requires source-specific review
+    version_date: Per-source release date
+    connector_status: IMPLEMENTED
+    source_class: OPEN
+    ui_group: EVENT_EVIDENCE
+    default_enabled: false
+    caveat: Sparse observations are never rendered as continuous observed tracks
+  pangaea_xue_long_track:
+    provider: PANGAEA / Third Institute of Oceanography, SOA
+    dataset: Xue Long cruise 76XL20120717 underway track
+    url: https://doi.org/10.1594/PANGAEA.891818
+    evidence_context_type: RAW_POSITION_TRACK
+    geographic_coverage: Published cruise route to the Arctic
+    temporal_coverage: 2012-07-17 through 2012-09-08
+    resolution: 3,186 underway positions
+    format: PANGAEA tabular text / GeoPackage derivative
+    acquisition: DOI endpoint with source checksum and provider QC retention
+    license: CC BY 3.0
+    attribution: Chen, Cai and Ouyang (2018), PANGAEA.891818
+    redistribution: Allowed with attribution
+    commercial_use: Allowed under CC BY 3.0
+    version_date: 2018-07-02 publication
+    connector_status: IMPLEMENTED
+    source_class: OPEN
+    ui_group: RESEARCH_TRACKS
+    default_enabled: false
+  nga_world_port_index:
+    provider: US National Geospatial-Intelligence Agency
+    dataset: World Port Index, Pub. 150
+    url: https://msi.nga.mil/Publications/WPI
+    evidence_context_type: PORT_CONTEXT
+    geographic_coverage: Global
+    temporal_coverage: Provider states monthly updates
+    resolution: Port point and descriptive attributes
+    format: Official CSV; GeoPackage/JSON/Shapefile also offered
+    acquisition: Official UpdatedPub150.csv endpoint with checksum and schema gate
+    license: United States government publication; provider terms and caveats retained
+    attribution: National Geospatial-Intelligence Agency, World Port Index
+    redistribution: Review provider notices; normalized factual context only by default
+    commercial_use: Not asserted by MGRB
+    version_date: Retrieval date recorded per build
+    connector_status: IMPLEMENTED
+    source_class: OPEN
+    ui_group: INFRASTRUCTURE
+    default_enabled: false
+    caveat: General reference only; not a substitute for current charts
+  osm_submarine_cables:
+    provider: OpenStreetMap contributors
+    dataset: Underwater communication lines and cable landing stations
+    url: https://www.openstreetmap.org/copyright
+    evidence_context_type: STRATEGIC_INFRASTRUCTURE_CONTEXT
+    geographic_coverage: Global but incomplete and uneven
+    temporal_coverage: Snapshot date recorded by importer
+    resolution: Contributor-mapped geometry
+    format: OSM-derived GeoJSON/GeoPackage supplied by user or audited extract
+    acquisition: Explicit OSM extract importer; no website scraping
+    license: ODbL 1.0
+    attribution: © OpenStreetMap contributors, openstreetmap.org/copyright
+    redistribution: Attribution and ODbL database obligations apply
+    commercial_use: Allowed under ODbL 1.0
+    version_date: Snapshot date required
+    connector_status: IMPORT_ONLY
+    source_class: OPEN
+    ui_group: INFRASTRUCTURE
+    default_enabled: false
+    caveat: Routes may be imported, generalized, incomplete or outdated; not authoritative
+  telegeography_submarine_cable_map:
+    provider: TeleGeography
+    dataset: Submarine Cable Map
+    url: https://www.submarinecablemap.com/
+    evidence_context_type: PRODUCT_REQUIREMENTS_REFERENCE
+    geographic_coverage: Global
+    temporal_coverage: Provider current
+    resolution: Proprietary provider presentation
+    format: Web reference
+    acquisition: Reference only; MGRB never scrapes or redistributes route data
+    license: Proprietary / provider terms
+    attribution: TeleGeography
+    redistribution: Not included
+    commercial_use: Provider authorization required
+    version_date: Provider current
+    connector_status: AUDITED
+    source_class: REFERENCE_ONLY
+    ui_group: INFRASTRUCTURE
+    default_enabled: false
+  byo_cable_layer:
+    provider: User supplied
+    dataset: Licensed or research-authorized cable routes/landing points
+    url: null
+    evidence_context_type: STRATEGIC_INFRASTRUCTURE_CONTEXT
+    geographic_coverage: User supplied
+    temporal_coverage: User supplied
+    resolution: User supplied
+    format: GeoJSON / GeoPackage / Shapefile
+    acquisition: Local import only with explicit source and license metadata
+    license: User must supply and review
+    attribution: User supplied
+    redistribution: Disabled until user confirms source terms
+    commercial_use: Unknown until user review
+    version_date: User supplied
+    connector_status: IMPORT_ONLY
+    source_class: BYO_LICENSED
+    ui_group: INFRASTRUCTURE
+    default_enabled: false
+    caveat: MGRB does not fabricate, infer or redistribute cable routes

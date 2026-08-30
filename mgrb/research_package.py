@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import shutil
 import sqlite3
 from collections.abc import Iterable
@@ -21,10 +22,21 @@ from .adapters import (
     ScsdiSouthChinaSeaEventsAdapter,
     WorldBankTrafficDensityAdapter,
 )
+from .analytics import (
+    distance_to_features,
+    low_speed_candidates,
+    repeated_area_visits,
+    track_coverage_metrics,
+    zone_crossing_candidates,
+)
 from .cartography import buffered_bbox, buffered_vector_bbox, resolve_layout_geometry
 from .config import Region, load_profiles, load_regions, load_yaml
+from .events import import_events
 from .evidence import QualityControlConfig, normalize_evidence, quality_control
 from .importer import normalize_user_input
+from .infrastructure import WorldPortIndexAdapter, import_infrastructure
+from .layer_registry import LayerRegistry
+from .official_observations import import_official_observations
 from .product import BACKGROUND_PRESETS
 from .provenance import git_commit, sha256
 from .sources import SourceRegistry
@@ -63,6 +75,9 @@ class ResearchBuildRequest:
         "territorial_sea",
     )
     field_maps: dict[str, dict[str, str]] | None = None
+    input_kinds: dict[str, str] | None = None
+    input_metadata: dict[str, dict[str, str]] | None = None
+    context_layers: tuple[str, ...] = ()
     include_public_observations: bool = True
     product_mode: bool = False
     regions_config: Path | None = None
@@ -206,6 +221,7 @@ def _public_observations(
         attribution="See source_url and source_name for every observation",
         raw_reference="metadata/public-observations-v0.1.csv",
     )
+    normalized["dataset_id"] = "official-observations-seed"
     return _filter_observations(normalized, request, region)
 
 
@@ -257,15 +273,51 @@ def _empty_events() -> gpd.GeoDataFrame:
     )
 
 
-def _filter_events(events: gpd.GeoDataFrame, region: Region) -> gpd.GeoDataFrame:
+def _filter_events(
+    events: gpd.GeoDataFrame,
+    region: Region,
+    request: ResearchBuildRequest | None = None,
+) -> gpd.GeoDataFrame:
     if events.empty:
         return events.copy()
+    filtered = events.copy()
+    if request is not None:
+        time_column = "start_time" if "start_time" in filtered else "timestamp_start"
+        timestamps = pd.to_datetime(filtered[time_column], errors="coerce", utc=True)
+        if request.start_date:
+            filtered = filtered[timestamps.dt.date >= request.start_date]
+            timestamps = timestamps.loc[filtered.index]
+        if request.end_date:
+            filtered = filtered[timestamps.dt.date <= request.end_date]
     xmin, ymin, xmax, ymax = region.bbox
-    longitude = events.geometry.x
+    representative = filtered.geometry.apply(lambda geometry: geometry.representative_point())
+    longitude = representative.x
     if region.longitude_convention == "360":
         longitude = longitude.mod(360.0)
-    latitude = events.geometry.y
-    return events[longitude.between(xmin, xmax) & latitude.between(ymin, ymax)].copy()
+    latitude = representative.y
+    return filtered[longitude.between(xmin, xmax) & latitude.between(ymin, ymax)].copy()
+
+
+def _dataset_id(path: Path) -> str:
+    stem = re.sub(r"[^a-z0-9]+", "-", path.stem.casefold()).strip("-") or "dataset"
+    return f"{stem}-{sha256(path)[:10]}"
+
+
+def _dataset_layer_name(dataset_id: str) -> str:
+    return "dataset_" + re.sub(r"[^a-zA-Z0-9_]+", "_", dataset_id)[:50]
+
+
+def _clip_context(frame: gpd.GeoDataFrame, region: Region) -> gpd.GeoDataFrame:
+    if frame.empty:
+        return frame.copy()
+    representative = frame.to_crs(4326).geometry.apply(
+        lambda geometry: geometry.representative_point()
+    )
+    longitude = representative.x
+    xmin, ymin, xmax, ymax = region.bbox
+    if region.longitude_convention == "360":
+        longitude = longitude.mod(360.0)
+    return frame[longitude.between(xmin, xmax) & representative.y.between(ymin, ymax)].copy()
 
 
 def _empty_maritime_layer() -> gpd.GeoDataFrame:
@@ -317,6 +369,13 @@ def prepare_research_package(
     region = regions[request.area]
     if not region.research_preset:
         raise ValueError(f"Region is not a maritime research preset: {request.area}")
+    layer_registry = LayerRegistry.load(root / "config" / "data_layers.yml")
+    selected_context_records = []
+    for layer_id in request.context_layers:
+        record = layer_registry.get(layer_id)
+        if record.source_class == "REFERENCE_ONLY":
+            raise ValueError(f"Reference-only layer cannot be built: {layer_id}")
+        selected_context_records.append(record)
     package_dir = (request.output_root / request.build_id).resolve()
     if package_dir.exists():
         raise FileExistsError(f"Research package already exists: {package_dir}")
@@ -333,14 +392,24 @@ def prepare_research_package(
         root / "metadata" / "vessels-v0.1.yml",
         root / "schema" / "vessel_registry.schema.json",
     )
+    include_official_observations = (
+        request.include_public_observations or "official_observations" in request.context_layers
+    )
     observations = (
         _public_observations(root, registry, request, region)
-        if request.include_public_observations
+        if include_official_observations
         else gpd.GeoDataFrame()
     )
     public_evidence_records: list[dict] = []
     public_events = _empty_events()
-    for source_id in region.public_evidence_sources:
+    evidence_source_ids = list(region.public_evidence_sources)
+    for layer_id, source_id in (
+        ("scsdi_events", ScsdiSouthChinaSeaEventsAdapter.source_id),
+        ("pangaea_xue_long_track", PangaeaXueLong2012Adapter.source_id),
+    ):
+        if layer_id in request.context_layers and source_id not in evidence_source_ids:
+            evidence_source_ids.append(source_id)
+    for source_id in evidence_source_ids:
         if not request.public_data or not request.live_sources:
             continue
         if source_id == PangaeaXueLong2012Adapter.source_id:
@@ -357,6 +426,7 @@ def prepare_research_package(
                 attribution=("Chen, Cai & Ouyang (2018), PANGAEA, doi:10.1594/PANGAEA.891818"),
                 raw_reference=adapter.download_url,
             )
+            normalized_track["dataset_id"] = source_id
             normalized_track = _filter_observations(normalized_track, request, region)
             observations = pd.concat([observations, normalized_track], ignore_index=True)
             observations = gpd.GeoDataFrame(observations, geometry="geometry", crs=4326)
@@ -390,7 +460,9 @@ def prepare_research_package(
         elif source_id == ScsdiSouthChinaSeaEventsAdapter.source_id:
             adapter = ScsdiSouthChinaSeaEventsAdapter()
             cache = adapter.acquire(root / "data" / "raw" / "scsdi")
-            loaded_events = _filter_events(adapter.read(cache), region)
+            loaded_events = adapter.read(cache)
+            loaded_events["dataset_id"] = source_id
+            loaded_events = _filter_events(loaded_events, region, request)
             public_events = gpd.GeoDataFrame(
                 pd.concat([public_events, loaded_events], ignore_index=True),
                 geometry="geometry",
@@ -432,36 +504,181 @@ def prepare_research_package(
         else:
             raise ValueError(f"Unsupported preset public evidence source: {source_id}")
     local_source_records: list[dict] = []
+    dataset_manifest_records: list[dict] = []
+    user_data_path = directories["data"] / "user-data.gpkg"
+    infrastructure_path = directories["data"] / "infrastructure.gpkg"
+    infrastructure_frames: list[gpd.GeoDataFrame] = []
     for local_input in request.local_inputs:
-        local, import_summary = normalize_user_input(
-            local_input,
-            build_id=request.build_id,
-            field_map=(request.field_maps or {}).get(str(local_input)),
+        resolved_input = local_input.resolve()
+        key = str(local_input)
+        resolved_key = str(resolved_input)
+        kind = str(
+            (request.input_kinds or {}).get(key)
+            or (request.input_kinds or {}).get(resolved_key)
+            or "TRACK"
+        ).upper()
+        metadata = dict(
+            (request.input_metadata or {}).get(key)
+            or (request.input_metadata or {}).get(resolved_key)
+            or {}
         )
-        local = _filter_observations(local, request, region)
-        observations = pd.concat([observations, local], ignore_index=True)
-        observations = gpd.GeoDataFrame(observations, geometry="geometry", crs=4326)
+        dataset_id = _dataset_id(resolved_input)
+        field_map = (request.field_maps or {}).get(key) or (request.field_maps or {}).get(
+            resolved_key
+        )
+        source_name = metadata.get("source_name") or resolved_input.name
+        license_text = metadata.get("license") or "USER_SUPPLIED_REVIEW_REQUIRED"
+        attribution = metadata.get("attribution") or "User-supplied local data"
+        source_url = metadata.get("source_url")
+        import_summary: object
+        record_count = 0
+        if kind == "TRACK":
+            local, import_summary = normalize_user_input(
+                resolved_input,
+                build_id=request.build_id,
+                field_map=field_map,
+            )
+            local["dataset_id"] = dataset_id
+            local = _filter_observations(local, request, region)
+            _write_geodataframe(local, user_data_path, _dataset_layer_name(dataset_id))
+            observations = pd.concat([observations, local], ignore_index=True)
+            observations = gpd.GeoDataFrame(observations, geometry="geometry", crs=4326)
+            record_count = len(local)
+            semantic_class = "RAW_POSITION_TRACK"
+        elif kind == "OFFICIAL_OBSERVATION":
+            local, import_summary = import_official_observations(
+                resolved_input,
+                build_id=request.build_id,
+                field_map=field_map,
+                source_name=source_name,
+                license_text=license_text,
+                attribution=attribution,
+            )
+            local["dataset_id"] = dataset_id
+            local = _filter_observations(local, request, region)
+            _write_geodataframe(local, user_data_path, _dataset_layer_name(dataset_id))
+            observations = pd.concat([observations, local], ignore_index=True)
+            observations = gpd.GeoDataFrame(observations, geometry="geometry", crs=4326)
+            record_count = len(local)
+            semantic_class = "OFFICIAL_OBSERVATION"
+        elif kind == "EVENT":
+            local_events, import_summary = import_events(
+                resolved_input,
+                dataset_id=dataset_id,
+                field_map=field_map,
+                source_name=source_name,
+                source_url=source_url,
+                license_text=license_text,
+                attribution=attribution,
+            )
+            local_events = _filter_events(local_events, region, request)
+            _write_geodataframe(local_events, user_data_path, _dataset_layer_name(dataset_id))
+            public_events = gpd.GeoDataFrame(
+                pd.concat([public_events, local_events], ignore_index=True),
+                geometry="geometry",
+                crs=4326,
+            )
+            record_count = len(local_events)
+            semantic_class = "EVENT_GEOMETRY"
+        elif kind in {
+            "PORT",
+            "CABLE_LANDING_POINT",
+            "SUBMARINE_CABLE",
+            "OTHER_INFRASTRUCTURE",
+        }:
+            source_class = metadata.get("source_class") or "BYO_LICENSED"
+            layer_kind = "OTHER" if kind == "OTHER_INFRASTRUCTURE" else kind
+            infrastructure, import_summary = import_infrastructure(
+                resolved_input,
+                layer_kind=layer_kind,
+                source_class=source_class,
+                source_name=source_name,
+                license_text=license_text,
+                attribution=attribution,
+                redistribution=metadata.get("redistribution") or "DISABLED_PENDING_REVIEW",
+            )
+            infrastructure["dataset_id"] = dataset_id
+            infrastructure = _clip_context(infrastructure, region)
+            _write_geodataframe(infrastructure, user_data_path, _dataset_layer_name(dataset_id))
+            infrastructure_frames.append(infrastructure)
+            record_count = len(infrastructure)
+            semantic_class = "INFRASTRUCTURE_CONTEXT"
+        else:
+            raise ValueError(f"Unsupported input kind: {kind}")
+        summary_payload = (
+            import_summary.to_dict() if hasattr(import_summary, "to_dict") else import_summary
+        )
+        dataset_manifest_records.append(
+            {
+                "dataset_id": dataset_id,
+                "filename": resolved_input.name,
+                "input_kind": kind,
+                "semantic_class": semantic_class,
+                "independent_layer": _dataset_layer_name(dataset_id),
+                "record_count_after_filters": record_count,
+                "source_sha256": sha256(resolved_input),
+                "source_name": source_name,
+                "source_url": source_url,
+                "license": license_text,
+                "attribution": attribution,
+                "import_qc": summary_payload,
+            }
+        )
         local_source_records.append(
             {
-                "source_id": f"local-{sha256(local_input)[:12]}",
+                "source_id": f"local-{sha256(resolved_input)[:12]}",
                 "provider": "User supplied",
-                "dataset": local_input.name,
+                "dataset": resolved_input.name,
                 "version_or_date": None,
-                "original_url": None,
-                "license": "USER_SUPPLIED_REVIEW_REQUIRED",
+                "original_url": source_url,
+                "license": license_text,
                 "allowed_use": "local processing only until reviewed",
                 "attribution_required": True,
                 "redistribution_allowed": False,
                 "commercial_use_known": False,
                 "spatial_resolution": None,
                 "temporal_coverage": None,
-                "source_sha256": sha256(local_input),
+                "source_sha256": sha256(resolved_input),
                 "availability": "LOCAL_ONLY",
-                "transformations": ["local import", "canonical normalization"],
-                "import_qc": import_summary,
+                "evidence_context_type": semantic_class,
+                "transformations": [
+                    "local import",
+                    "semantic-class-preserving normalization",
+                    "independent dataset layer",
+                    "research extent and time filter where applicable",
+                ],
+                "import_qc": summary_payload,
             }
         )
     qc = quality_control(observations, QualityControlConfig())
+    coverage_metrics = track_coverage_metrics(
+        qc.cleaned_points,
+        requested_start=request.start_date,
+        requested_end=request.end_date,
+    )
+    if not coverage_metrics.empty:
+        geometry_name = qc.cleaned_points.geometry.name
+        qc.cleaned_points = gpd.GeoDataFrame(
+            qc.cleaned_points.merge(
+                coverage_metrics,
+                on=["dataset_id", "entity_id"],
+                how="left",
+                suffixes=("", "_coverage"),
+            ),
+            geometry=geometry_name,
+            crs=4326,
+        )
+        if not qc.track_segments.empty:
+            qc.track_segments = gpd.GeoDataFrame(
+                qc.track_segments.merge(
+                    coverage_metrics,
+                    on=["dataset_id", "entity_id"],
+                    how="left",
+                    suffixes=("", "_coverage"),
+                ),
+                geometry="geometry",
+                crs=4326,
+            )
 
     observations_path = directories["data"] / "observations.gpkg"
     tracks_path = directories["data"] / "tracks.gpkg"
@@ -539,12 +756,47 @@ def prepare_research_package(
     for layer_name, frame in marine_layers.items():
         _write_geodataframe(frame, maritime_path, layer_name)
 
+    context_source_records: list[dict] = []
+    if "nga_world_port_index" in request.context_layers:
+        wpi_adapter = WorldPortIndexAdapter()
+        wpi_source = wpi_adapter.acquire(root / "data" / "raw" / "nga_world_port_index")
+        ports = _clip_context(wpi_adapter.read(wpi_source), region)
+        ports["dataset_id"] = "nga-world-port-index"
+        ports["infrastructure_kind"] = "PORT"
+        ports["source_class"] = "OPEN"
+        ports["license"] = "United States government publication; provider notices retained"
+        ports["attribution"] = "National Geospatial-Intelligence Agency, World Port Index"
+        ports["redistribution"] = "REVIEW_PROVIDER_NOTICES"
+        infrastructure_frames.append(ports)
+        context_source_records.append(wpi_adapter.source_record(wpi_source, len(ports)))
+    if infrastructure_frames:
+        infrastructure_all = gpd.GeoDataFrame(
+            pd.concat(infrastructure_frames, ignore_index=True), geometry="geometry", crs=4326
+        )
+        for kind, layer_name in (
+            ("PORT", "ports"),
+            ("CABLE_LANDING_POINT", "cable_landing_points"),
+            ("SUBMARINE_CABLE", "submarine_cables"),
+            ("OTHER", "other_infrastructure"),
+        ):
+            selected = infrastructure_all[infrastructure_all["infrastructure_kind"].eq(kind)].copy()
+            if not selected.empty:
+                _write_geodataframe(selected, infrastructure_path, layer_name)
+
     traffic_available = False
     traffic_details: dict[str, object] = {}
-    if request.traffic_density:
+    traffic_input = request.traffic_density
+    cached_traffic = root / "data" / "raw" / "r2-public" / "shipdensity_global.zip"
+    if (
+        traffic_input is None
+        and "world_bank_shipping_density" in request.context_layers
+        and cached_traffic.exists()
+    ):
+        traffic_input = cached_traffic
+    if traffic_input:
         traffic_window = buffered_bbox(region.bbox, region.longitude_convention, region.profile)
         traffic_details = WorldBankTrafficDensityAdapter().subset(
-            request.traffic_density,
+            traffic_input,
             traffic_window,
             directories["data"] / "normal-traffic-density.tif",
             buffer_degrees=1.0,
@@ -554,6 +806,119 @@ def prepare_research_package(
         source_warnings.append(
             "World Bank traffic density not cached; explicit empty availability group retained"
         )
+    if "osm_submarine_cables" in request.context_layers and not any(
+        record["input_kind"] in {"SUBMARINE_CABLE", "CABLE_LANDING_POINT"}
+        for record in dataset_manifest_records
+    ):
+        source_warnings.append(
+            "OSM submarine infrastructure selected but no audited OSM extract was supplied; "
+            "no geometry was fabricated or scraped"
+        )
+    if "byo_cable_layer" in request.context_layers and not any(
+        record["input_kind"] in {"SUBMARINE_CABLE", "CABLE_LANDING_POINT"}
+        for record in dataset_manifest_records
+    ):
+        source_warnings.append(
+            "BYO cable context selected but no licensed local cable input was supplied"
+        )
+
+    coverage_metrics.to_csv(directories["derived"] / "track_coverage.csv", index=False)
+    eez_frame = marine_layers.get("eez_reference", _empty_maritime_layer())
+    crossing_candidates = zone_crossing_candidates(qc.track_segments, eez_frame)
+    eez_boundaries = eez_frame.copy()
+    if not eez_boundaries.empty:
+        eez_boundaries["geometry"] = eez_boundaries.geometry.boundary
+    boundary_distances = distance_to_features(
+        qc.cleaned_points,
+        eez_boundaries,
+        distance_name="distance_to_eez_boundary_m",
+    )
+    if infrastructure_frames:
+        ports_for_distance = gpd.GeoDataFrame(
+            pd.concat(infrastructure_frames, ignore_index=True), geometry="geometry", crs=4326
+        )
+        ports_for_distance = ports_for_distance[
+            ports_for_distance["infrastructure_kind"].eq("PORT")
+        ]
+    else:
+        ports_for_distance = gpd.GeoDataFrame(geometry=[], crs=4326)
+    port_distances = distance_to_features(
+        qc.cleaned_points,
+        ports_for_distance,
+        distance_name="distance_to_port_m",
+    )
+    repeated_visits = repeated_area_visits(qc.cleaned_points, eez_frame)
+    slow_candidates = low_speed_candidates(qc.cleaned_points)
+    analytics_path = directories["derived"] / "analytics.gpkg"
+    if not crossing_candidates.empty:
+        _write_geodataframe(crossing_candidates, analytics_path, "eez_crossing_candidates")
+    for name, frame in (
+        ("eez_crossing_candidates.csv", crossing_candidates.drop(columns="geometry")),
+        ("distance_to_eez_boundary.csv", boundary_distances),
+        ("distance_to_port.csv", port_distances),
+        ("repeated_area_visits.csv", repeated_visits),
+        ("low_speed_candidates.csv", slow_candidates),
+    ):
+        frame.to_csv(directories["derived"] / name, index=False)
+    analytics_manifest = {
+        "schema": "mgrb-transparent-analytics-1.1",
+        "build_id": request.build_id,
+        "metrics": {
+            "track_coverage": {
+                "rows": len(coverage_metrics),
+                "semantics": "descriptive observation completeness and gap statistics",
+            },
+            "eez_crossing_candidates": {
+                "rows": len(crossing_candidates),
+                "semantics": "geometric intersections with sourced reference EEZ boundaries; "
+                "not a legal determination",
+            },
+            "distance_to_eez_boundary": {
+                "rows": len(boundary_distances),
+                "semantics": "planar metric distance in an automatically estimated local CRS",
+            },
+            "distance_to_port": {
+                "rows": len(port_distances),
+                "semantics": "descriptive nearest-feature distance; port data are general context",
+            },
+            "repeated_area_visits": {
+                "rows": len(repeated_visits),
+                "semantics": "descriptive point presence transitions, not intent",
+            },
+            "low_speed_candidates": {
+                "rows": len(slow_candidates),
+                "semantics": "threshold candidates only, not behavior classification",
+            },
+        },
+        "prohibited_inferences": [
+            "espionage",
+            "surveillance",
+            "militia status",
+            "hostile intent",
+            "deliberate AIS disablement",
+        ],
+    }
+    analytics_manifest_path = directories["metadata"] / "analytics-manifest.json"
+    analytics_manifest_path.write_text(
+        json.dumps(analytics_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    dataset_manifest = {
+        "schema": "mgrb-dataset-manifest-1.1",
+        "build_id": request.build_id,
+        "time_filter": {
+            "start": request.start_date.isoformat() if request.start_date else None,
+            "end": request.end_date.isoformat() if request.end_date else None,
+        },
+        "datasets": dataset_manifest_records,
+        "independence_rule": (
+            "Every local input has an independent dataset_id and GeoPackage layer; event and "
+            "infrastructure semantics are never promoted to vessel positions."
+        ),
+    }
+    dataset_manifest_path = directories["metadata"] / "dataset-manifest.json"
+    dataset_manifest_path.write_text(
+        json.dumps(dataset_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
 
     for name, frame in (
         ("cleaned_points.csv", qc.cleaned_points.drop(columns="geometry")),
@@ -564,9 +929,10 @@ def prepare_research_package(
         ("vessel_summary.csv", qc.vessel_summary),
     ):
         frame.to_csv(directories["derived"] / name, index=False)
-    source_evidence = qc.cleaned_points[
-        [
+    source_evidence = qc.cleaned_points.reindex(
+        columns=[
             "observation_id",
+            "dataset_id",
             "entity_id",
             "source_type",
             "source_name",
@@ -579,12 +945,12 @@ def prepare_research_package(
             "license",
             "attribution",
         ]
-    ]
+    )
     source_evidence.to_csv(directories["derived"] / "source_evidence.csv", index=False)
 
     source_registry = SourceRegistry.load(root / "metadata" / "sources.yml")
     source_records = list(base_spec["sources"])
-    if request.include_public_observations:
+    if include_official_observations:
         seed_hash = sha256(root / "metadata" / "public-observations-v0.1.csv")
         for source_id in (
             "japan_joint_staff_public_observations",
@@ -606,6 +972,23 @@ def prepare_research_package(
     source_records.extend(marine_records)
     source_records.extend(public_evidence_records)
     source_records.extend(local_source_records)
+    source_records.extend(context_source_records)
+    for record in selected_context_records:
+        source_records.append(
+            {
+                "source_id": f"layer-registry:{record.layer_id}",
+                **record.to_dict(),
+                "availability": (
+                    "AVAILABLE"
+                    if record.layer_id == "nga_world_port_index" and infrastructure_path.exists()
+                    else "AVAILABLE"
+                    if record.layer_id == "world_bank_shipping_density" and traffic_available
+                    else "SELECTED_WITH_IMPORT_REQUIRED"
+                    if record.connector_status == "IMPORT_ONLY"
+                    else "SELECTED_REGISTRY_RECORD",
+                ),
+            }
+        )
     traffic_record = source_registry.get("world_bank_shipping_density_2021").manifest_record(
         ["normal_traffic_density"],
         ["clip to research area"] if traffic_available else [],
@@ -617,7 +1000,7 @@ def prepare_research_package(
         traffic_record.update(
             {
                 "provider_download_url": WorldBankTrafficDensityAdapter.download_url,
-                "source_archive_bytes": request.traffic_density.stat().st_size,
+                "source_archive_bytes": traffic_input.stat().st_size,
                 "subset_sha256": traffic_details["subset_sha256"],
                 "subset_bbox": traffic_details["subset_bbox"],
                 "density_transform": traffic_details["transform"],
@@ -628,6 +1011,7 @@ def prepare_research_package(
     source_manifest = {
         "schema": "mgrb-source-manifest-1.1",
         "manifest_id": f"{request.build_id}-sources",
+        "selected_context_layers": list(request.context_layers),
         "sources": source_records,
         "warnings": source_warnings,
     }
@@ -698,6 +1082,7 @@ def prepare_research_package(
         "bbox_epsg4326": list(region.bbox),
         "background": request.background,
         "enabled_maritime_layers": list(request.enabled_maritime_layers),
+        "enabled_context_layers": list(request.context_layers),
         "product_mode": request.product_mode,
         "visible_footer": request.visible_footer,
         "requested_outputs": list(request.requested_outputs),
@@ -738,6 +1123,13 @@ def prepare_research_package(
             "evidence_methods": qc.cleaned_points["observation_method"].value_counts().to_dict(),
             "public_events": len(public_events),
             "public_event_types": public_events["event_type"].value_counts().to_dict(),
+            "independent_local_datasets": len(dataset_manifest_records),
+            "dataset_semantic_classes": {
+                record["dataset_id"]: record["semantic_class"]
+                for record in dataset_manifest_records
+            },
+            "track_coverage": json.loads(coverage_metrics.to_json(orient="records")),
+            "transparent_analytics": analytics_manifest["metrics"],
             "inferred_entity_integrity": True,
         },
         "restricted_raw_data_included": False,
@@ -798,16 +1190,24 @@ def prepare_research_package(
                 "cartographic_profile": region.profile,
                 "background": request.background,
                 "maritime_layers": list(request.enabled_maritime_layers),
+                "context_layers": list(request.context_layers),
                 "input_datasets": [
-                    {"filename": path.name, "sha256": sha256(path)} for path in request.local_inputs
+                    {
+                        "filename": path.name,
+                        "sha256": sha256(path),
+                        "input_kind": (request.input_kinds or {}).get(str(path), "TRACK"),
+                    }
+                    for path in request.local_inputs
                 ],
                 "field_maps": {
                     Path(path).name: mapping for path, mapping in (request.field_maps or {}).items()
                 },
-                "include_public_observations": request.include_public_observations,
+                "include_public_observations": include_official_observations,
                 "visible_footer": request.visible_footer,
                 "requested_outputs": list(request.requested_outputs),
                 "product_mode": request.product_mode,
+                "start_date": request.start_date.isoformat() if request.start_date else None,
+                "end_date": request.end_date.isoformat() if request.end_date else None,
             },
             indent=2,
             sort_keys=True,
@@ -843,12 +1243,21 @@ def prepare_research_package(
         "theme": style_manifest,
         "source_warnings": source_warnings,
         "availability": {
-            "marine_regions": all(not frame.empty for frame in marine_layers.values()),
+            "marine_regions": all(
+                not marine_layers[name].empty for name in MarineRegionsWFSAdapter.layers
+            ),
             "normal_traffic_density": traffic_available,
+            "infrastructure": infrastructure_path.exists(),
+            "analytics": analytics_path.exists(),
         },
         "selected_state": {
             "background": request.background,
             "maritime_layers": list(request.enabled_maritime_layers),
+            "context_layers": list(request.context_layers),
+            "time_filter": {
+                "start": request.start_date.isoformat() if request.start_date else None,
+                "end": request.end_date.isoformat() if request.end_date else None,
+            },
             "product_mode": request.product_mode,
         },
         "files": {
@@ -859,12 +1268,19 @@ def prepare_research_package(
             "tracks_gpkg": "data/tracks.gpkg",
             "events_gpkg": "data/events.gpkg",
             "context_gpkg": "data/context.gpkg",
+            "user_data_gpkg": "data/user-data.gpkg" if user_data_path.exists() else None,
+            "infrastructure_gpkg": (
+                "data/infrastructure.gpkg" if infrastructure_path.exists() else None
+            ),
+            "analytics_gpkg": "derived/analytics.gpkg" if analytics_path.exists() else None,
             "bathymetry": "data/bathymetry.tif",
             "traffic_density": ("data/normal-traffic-density.tif" if traffic_available else None),
             "build_manifest": "metadata/mgrb-build.json",
             "source_manifest": "metadata/mgrb-source-manifest.json",
             "style_manifest": "metadata/mgrb-style-manifest.json",
             "product_build_spec": "metadata/product-build-spec.json",
+            "dataset_manifest": "metadata/dataset-manifest.json",
+            "analytics_manifest": "metadata/analytics-manifest.json",
         },
     }
     spec_path = directories["metadata"] / "research-spec.json"
@@ -887,6 +1303,9 @@ def prepare_research_package(
         tracks_path,
         events_path,
         context_path,
+        user_data_path,
+        infrastructure_path,
+        analytics_path,
     ):
         _embed_gpkg_metadata(gpkg, metadata_payload)
     with rasterio.open(directories["data"] / "bathymetry.tif", "r+") as dataset:

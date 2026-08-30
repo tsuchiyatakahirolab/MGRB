@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from mgrb import __version__
 from mgrb.builder import build_region
 from mgrb.config import Region
 from mgrb.theme import resolve_theme
@@ -39,7 +40,7 @@ def test_build_emits_complete_private_path_free_style_metadata(tmp_path: Path):
     style_path = tmp_path / "metadata-test/metadata/mgrb-style-manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     style = json.loads(style_path.read_text(encoding="utf-8"))
-    assert manifest["mgrb_version"] == "1.0.0"
+    assert manifest["mgrb_version"] == __version__
     assert manifest["region_profile"] == "metadata_test"
     assert manifest["cartographic_profile"] == "local"
     assert manifest["layout_profile"] == "article_local"

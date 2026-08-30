@@ -39,15 +39,18 @@ mgrb ui
 ```
 
 The browser UI listens only on `127.0.0.1`. Choose an area, background and maritime layers;
-optionally add a local file; inspect schema/QC; then select **Build Research Package**.
+optionally add multiple local files with explicit track/observation/event/infrastructure
+semantics; inspect schema/QC; then select **Build Research Package**.
 
 ## UI workflow
 
 1. Select a preset or enter a custom WGS84 extent.
 2. Select a publication, bathymetry, relief, grayscale, context, imagery-reference, or empty background.
 3. Enable the maritime reference layers relevant to the research question.
-4. Optionally import positions and confirm any ambiguous field mapping.
-5. Preview QC and build paper, media, and portable QGIS outputs.
+4. Optionally import multiple datasets, select each semantic type, and confirm only applicable
+   ambiguous field mappings.
+5. Optionally select a shared date range and collapsed public context/evidence layers.
+6. Preview QC and build paper, media, and portable QGIS outputs.
 
 See [Product UI](docs/product-ui.md).
 
@@ -64,6 +67,8 @@ evidence.
 
 CSV, TSV, GeoJSON/JSON, GeoPackage, and Shapefile. MGRB detects common coordinate,
 timestamp, identity, and provider-segment fields; ambiguous mappings require confirmation.
+The unreleased v1.1 workflow preserves an independent dataset layer, QC record and provenance
+record for every input.
 
 ## Outputs
 
@@ -126,9 +131,17 @@ python -m pytest -q
 
 ```bash
 mgrb regions
+mgrb layers
 mgrb build taiwan-east --background bathymetry \
   --maritime-layers eez_reference,territorial_sea \
   --input vessel.csv --output-name taiwan-study
+
+mgrb build taiwan-east --from 2026-01-01 --to 2026-01-31 \
+  --input vessel.csv --input-kind TRACK \
+  --input official.csv --input-kind OFFICIAL_OBSERVATION \
+  --input events.geojson --input-kind EVENT \
+  --context-layers nga_world_port_index \
+  --output-name taiwan-multi-source-study
 
 mgrb build south-china-sea --background bathymetry \
   --maritime-layers eez_reference,territorial_sea,contiguous_zone \
@@ -144,6 +157,9 @@ Use the exact release used in a publication and retain upstream attribution. The
 v1.0.0 release DOI is [10.5281/zenodo.22172476](https://doi.org/10.5281/zenodo.22172476);
 [10.5281/zenodo.22172475](https://doi.org/10.5281/zenodo.22172475) identifies all versions.
 GitHub reads [`CITATION.cff`](CITATION.cff). See [Citation policy](CITATION_POLICY.md).
+
+The in-development v1.1 data/context architecture is documented in
+[v1.1 data and context workflow](docs/v1.1-data-context.md); it is not yet a tagged release.
 
 ## License
 

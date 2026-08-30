@@ -10,6 +10,7 @@ from typing import Any
 from pyproj import CRS
 
 from .config import load_regions
+from .layer_registry import LayerRegistry
 
 BACKGROUND_PRESETS: dict[str, dict[str, Any]] = {
     "clean-publication": {
@@ -89,6 +90,15 @@ MARITIME_LAYERS: dict[str, dict[str, str]] = {
 
 DEFAULT_MARITIME_LAYERS = ("eez_reference", "territorial_sea")
 OUTPUT_TYPES = ("preview", "paper", "media", "qgis")
+INPUT_KINDS = {
+    "TRACK",
+    "OFFICIAL_OBSERVATION",
+    "EVENT",
+    "PORT",
+    "CABLE_LANDING_POINT",
+    "SUBMARINE_CABLE",
+    "OTHER_INFRASTRUCTURE",
+}
 
 
 @dataclass(frozen=True)
@@ -97,6 +107,9 @@ class ProductBuildSpec:
     background: str = "bathymetry"
     maritime_layers: tuple[str, ...] = DEFAULT_MARITIME_LAYERS
     input_files: tuple[str, ...] = ()
+    input_kinds: dict[str, str] | None = None
+    input_metadata: dict[str, dict[str, str]] | None = None
+    context_layers: tuple[str, ...] = ()
     outputs: tuple[str, ...] = OUTPUT_TYPES
     custom_extent: tuple[float, float, float, float] | None = None
     field_maps: dict[str, dict[str, str]] | None = None
@@ -124,6 +137,14 @@ class ProductBuildSpec:
             raise ValueError(f"Unknown output types: {sorted(unknown_outputs)}")
         if not self.outputs:
             raise ValueError("Select at least one output")
+        registry = LayerRegistry.load(root / "config" / "data_layers.yml")
+        for layer_id in self.context_layers:
+            record = registry.get(layer_id)
+            if record.source_class == "REFERENCE_ONLY":
+                raise ValueError(f"Reference-only layer cannot be enabled: {layer_id}")
+        unknown_kinds = set((self.input_kinds or {}).values()) - INPUT_KINDS
+        if unknown_kinds:
+            raise ValueError(f"Unknown input kinds: {sorted(unknown_kinds)}")
         start = date.fromisoformat(self.start_date) if self.start_date else None
         end = date.fromisoformat(self.end_date) if self.end_date else None
         if start and end and start > end:
@@ -140,6 +161,20 @@ class ProductBuildSpec:
             background=str(payload.get("background", "bathymetry")),
             maritime_layers=tuple(payload.get("maritime_layers", DEFAULT_MARITIME_LAYERS)),
             input_files=tuple(payload.get("input_files", ())),
+            input_kinds=(
+                {str(key): str(value) for key, value in (payload.get("input_kinds") or {}).items()}
+                if payload.get("input_kinds") is not None
+                else None
+            ),
+            input_metadata=(
+                {
+                    str(key): {str(k): str(v) for k, v in value.items()}
+                    for key, value in (payload.get("input_metadata") or {}).items()
+                }
+                if payload.get("input_metadata") is not None
+                else None
+            ),
+            context_layers=tuple(str(value) for value in payload.get("context_layers", ())),
             outputs=tuple(payload.get("outputs", OUTPUT_TYPES)),
             custom_extent=tuple(float(value) for value in custom) if custom else None,
             field_maps=payload.get("field_maps"),
@@ -197,6 +232,7 @@ def custom_region_defaults(extent: tuple[float, float, float, float]) -> dict[st
 
 def product_catalog(root: Path) -> dict[str, Any]:
     regions = load_regions(root / "config" / "regions.yml")
+    layer_registry = LayerRegistry.load(root / "config" / "data_layers.yml")
     area_order = (
         "taiwan-east",
         "taiwan-south",
@@ -228,11 +264,14 @@ def product_catalog(root: Path) -> dict[str, Any]:
         "backgrounds": [dict(id=key, **value) for key, value in BACKGROUND_PRESETS.items()],
         "maritime_layers": [dict(id=key, **value) for key, value in MARITIME_LAYERS.items()],
         "outputs": list(OUTPUT_TYPES),
+        "context_layer_groups": layer_registry.grouped_catalog(),
+        "input_kinds": sorted(INPUT_KINDS),
         "defaults": {
             "area": "taiwan-east",
             "background": "bathymetry",
             "maritime_layers": list(DEFAULT_MARITIME_LAYERS),
             "outputs": list(OUTPUT_TYPES),
+            "context_layers": [],
         },
     }
 

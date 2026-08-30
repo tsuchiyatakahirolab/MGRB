@@ -11,6 +11,7 @@ from . import __version__
 from .builder import build_region
 from .config import load_profiles, load_regions, load_yaml
 from .equidistance import EquidistanceParameters, build_equidistance_file
+from .layer_registry import LayerRegistry
 from .product import ProductBuildSpec
 from .provenance import verify_manifest, write_manifest
 from .sources import SourceRegistry
@@ -56,6 +57,9 @@ def main() -> None:
 
     r = sub.add_parser("regions")
     r.add_argument("--config", type=Path, default=Path("config/regions.yml"))
+
+    layers = sub.add_parser("layers")
+    layers.add_argument("--config", type=Path, default=Path("config/data_layers.yml"))
 
     m = sub.add_parser("manifest")
     m.add_argument("output", type=Path)
@@ -115,6 +119,29 @@ def main() -> None:
     )
     b.add_argument("--input", type=Path, action="append", default=[])
     b.add_argument("--include-public-observations", action="store_true")
+    b.add_argument(
+        "--context-layers",
+        default="",
+        help="Comma-separated public context layer IDs from `mgrb layers`",
+    )
+    b.add_argument(
+        "--input-kind",
+        choices=(
+            "TRACK",
+            "OFFICIAL_OBSERVATION",
+            "EVENT",
+            "PORT",
+            "CABLE_LANDING_POINT",
+            "SUBMARINE_CABLE",
+            "OTHER_INFRASTRUCTURE",
+        ),
+        action="append",
+        default=[],
+        help=(
+            "Semantic kind for each --input/--local-data in order; repeat per file, or "
+            "provide once to apply to all (default: TRACK)"
+        ),
+    )
 
     args = p.parse_args()
     if args.cmd == "doctor":
@@ -132,6 +159,10 @@ def main() -> None:
     if args.cmd == "regions":
         regions = load_regions(args.config)
         print(json.dumps({k: vars(v) for k, v in regions.items()}, indent=2))
+        return
+    if args.cmd == "layers":
+        registry = LayerRegistry.load(args.config)
+        print(json.dumps(registry.grouped_catalog(), indent=2))
         return
     if args.cmd == "manifest":
         write_manifest(args.root, args.output, args.repo_root)
@@ -171,13 +202,29 @@ def main() -> None:
             output_root = args.output_root or (
                 Path("build/maritime") if "," in str(args.output) else Path(args.output)
             )
+            input_paths = (*args.local_data, *args.input)
+            input_kinds = args.input_kind or ["TRACK"]
+            if len(input_kinds) not in {1, len(input_paths)}:
+                raise SystemExit(
+                    "Repeat --input-kind once per input, or provide it once to apply to all"
+                )
+            resolved_kinds = (
+                input_kinds * len(input_paths) if len(input_kinds) == 1 else input_kinds
+            )
             product_spec = ProductBuildSpec(
                 area=region.name,
                 background=args.background,
                 maritime_layers=tuple(
                     item.strip() for item in args.maritime_layers.split(",") if item.strip()
                 ),
-                input_files=tuple(str(path) for path in (*args.local_data, *args.input)),
+                input_files=tuple(str(path) for path in input_paths),
+                input_kinds={
+                    str(path.resolve()): kind
+                    for path, kind in zip(input_paths, resolved_kinds, strict=True)
+                },
+                context_layers=tuple(
+                    item.strip() for item in args.context_layers.split(",") if item.strip()
+                ),
                 outputs=tuple(requested_outputs.split(",")),
                 include_public_observations=args.include_public_observations,
                 visible_footer=not args.no_visible_footer,

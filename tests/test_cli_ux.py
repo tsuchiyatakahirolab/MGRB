@@ -85,3 +85,45 @@ def test_maritime_one_command_exposes_only_research_decisions(monkeypatch, tmp_p
     assert request.actors == ("plan", "ccg", "research", "fishing")
     assert request.input_files == ()
     assert request.background == "bathymetry"
+
+
+def test_cli_preserves_a_semantic_kind_for_each_input(monkeypatch, tmp_path: Path):
+    captured = []
+
+    def fake_product(request, *, output_root, repository_root, build_id):
+        captured.append(request)
+        result = SimpleNamespace(
+            build_id="multi-kind",
+            output=tmp_path / "multi-kind",
+            qgis_project=tmp_path / "multi-kind" / "project" / "workspace.qgz",
+            elapsed_seconds=1.0,
+        )
+        return result, tmp_path / "multi-kind.zip"
+
+    track = tmp_path / "track.csv"
+    event = tmp_path / "event.geojson"
+    monkeypatch.setattr(cli, "execute_product_build", fake_product)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mgrb",
+            "build",
+            "taiwan-east",
+            "--input",
+            str(track),
+            "--input-kind",
+            "TRACK",
+            "--input",
+            str(event),
+            "--input-kind",
+            "EVENT",
+            "--output-root",
+            str(tmp_path),
+        ],
+    )
+    cli.main()
+    assert captured[0].input_kinds == {
+        str(track.resolve()): "TRACK",
+        str(event.resolve()): "EVENT",
+    }

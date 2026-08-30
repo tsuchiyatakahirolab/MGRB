@@ -9,6 +9,7 @@ import gc
 import json
 import os
 import shutil
+import sqlite3
 import sys
 import zipfile
 from pathlib import Path
@@ -81,6 +82,27 @@ def _layer(
     project.addMapLayer(layer, False)
     group.addLayer(layer)
     return layer
+
+
+def _gpkg_layers(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    with sqlite3.connect(path) as connection:
+        return [
+            str(row[0])
+            for row in connection.execute(
+                "SELECT table_name FROM gpkg_contents ORDER BY table_name"
+            ).fetchall()
+        ]
+
+
+def _context_style(layer: QgsVectorLayer, color: str = "#496d78") -> None:
+    if layer.geometryType() == Qgis.GeometryType.Point:
+        _point_style(layer, color)
+    elif layer.geometryType() == Qgis.GeometryType.Line:
+        _boundary_style(layer, color, "0.35", "solid")
+    else:
+        _boundary_style(layer, color, "0.25", "dash")
 
 
 def _point_style(layer: QgsVectorLayer, color: str, *, uncertain: bool = False) -> None:
@@ -817,6 +839,72 @@ def build(spec_path: Path) -> dict:
     )
     if public_events.featureCount() > 0:
         evidence_layers.append(public_events)
+
+    if product_mode:
+        user_events = _layer(
+            project,
+            root_groups["05 EVENTS"],
+            files["events_gpkg"],
+            "events",
+            "User Event Geometry",
+            "\"source_type\" = 'USER_EVENT'",
+        )
+        _point_style(user_events, "#8b5d33")
+        _set_visibility(root_groups["05 EVENTS"], user_events, user_events.featureCount() > 0)
+        if user_events.featureCount() > 0:
+            evidence_layers.append(user_events)
+
+        dataset_manifest_path = files.get("dataset_manifest")
+        if dataset_manifest_path and dataset_manifest_path.exists() and files.get("user_data_gpkg"):
+            dataset_manifest = json.loads(dataset_manifest_path.read_text(encoding="utf-8"))
+            for record in dataset_manifest.get("datasets", []):
+                semantic = record.get("semantic_class")
+                target = (
+                    root_groups["03 USER / VESSEL DATA"]
+                    if semantic == "RAW_POSITION_TRACK"
+                    else root_groups["04 OFFICIAL / OTHER OBSERVATIONS"]
+                    if semantic == "OFFICIAL_OBSERVATION"
+                    else root_groups["05 EVENTS"]
+                    if semantic == "EVENT_GEOMETRY"
+                    else root_groups["06 INFRASTRUCTURE / CONTEXT"]
+                )
+                layer = _layer(
+                    project,
+                    target,
+                    files["user_data_gpkg"],
+                    record["independent_layer"],
+                    f"Dataset · {record['filename']}",
+                )
+                _context_style(layer, "#6e4d7e" if semantic != "RAW_POSITION_TRACK" else "#b44732")
+                _set_visibility(target, layer, False)
+
+        infrastructure_gpkg = files.get("infrastructure_gpkg")
+        if infrastructure_gpkg:
+            infrastructure_group = root_groups["06 INFRASTRUCTURE / CONTEXT"]
+            for table in _gpkg_layers(infrastructure_gpkg):
+                layer = _layer(
+                    project,
+                    infrastructure_group,
+                    infrastructure_gpkg,
+                    table,
+                    table.replace("_", " ").title(),
+                )
+                _context_style(layer)
+                _set_visibility(infrastructure_group, layer, layer.featureCount() > 0)
+
+        analytics_gpkg = files.get("analytics_gpkg")
+        if analytics_gpkg:
+            analytics_group = root_groups["07 ANALYTIC / OPTIONAL"]
+            for table in _gpkg_layers(analytics_gpkg):
+                layer = _layer(
+                    project,
+                    analytics_group,
+                    analytics_gpkg,
+                    table,
+                    table.replace("_", " ").title(),
+                )
+                _context_style(layer, "#8a542e")
+                _set_visibility(analytics_group, layer, False)
 
     for name in ("Encounters", "Port Visits", "AIS Gaps", "User Notes"):
         placeholder = _layer(
