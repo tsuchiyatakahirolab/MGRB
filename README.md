@@ -2,6 +2,8 @@
 
 ## Maritime Geospatial Research Base
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22172475.svg)](https://doi.org/10.5281/zenodo.22172475)
+
 **Turn maritime data into publication-ready maps and reproducible QGIS research
 workspaces in minutes.**
 
@@ -138,9 +140,10 @@ mgrb median-line baseline-a.gpkg baseline-b.gpkg computed.gpkg \
 
 ## Citation
 
-Use the exact release used in a publication and retain upstream attribution. GitHub reads
-[`CITATION.cff`](CITATION.cff); the archival DOI will be added after Zenodo issues it for the
-published release. See [Citation policy](CITATION_POLICY.md).
+Use the exact release used in a publication and retain upstream attribution. The archived
+v1.0.0 release DOI is [10.5281/zenodo.22172476](https://doi.org/10.5281/zenodo.22172476);
+[10.5281/zenodo.22172475](https://doi.org/10.5281/zenodo.22172475) identifies all versions.
+GitHub reads [`CITATION.cff`](CITATION.cff). See [Citation policy](CITATION_POLICY.md).
 
 ## License
 

@@ -1,5 +1,8 @@
 # MGRB v1.0.0 — First Public Release
 
+Archived at Zenodo: [10.5281/zenodo.22172476](https://doi.org/10.5281/zenodo.22172476).
+The all-versions DOI is [10.5281/zenodo.22172475](https://doi.org/10.5281/zenodo.22172475).
+
 MGRB turns public maritime data and local research inputs into publication-ready maps and
 portable, reproducible QGIS research workspaces. Researchers make research choices; MGRB
 handles routine GIS engineering and records the resulting lineage.
