@@ -32,10 +32,18 @@ GEBCO_NCSS = (
     "https://dap.ceda.ac.uk/thredds/ncss/grid/bodc/gebco/global/gebco_2026/"
     "ice_surface_elevation/netcdf/GEBCO_2026.nc"
 )
+GSHHG_RELEASE_URL = (
+    "https://github.com/GenericMappingTools/gshhg-gmt/releases/download/2.3.7/"
+    "gshhg-shp-2.3.7.zip"
+)
 DOWNLOADS = {
     "gshhg_2_3_7": (
-        "https://ftp.soest.hawaii.edu/gshhg/gshhg-shp-2.3.7.zip",
+        (
+            GSHHG_RELEASE_URL,
+            "https://ftp.soest.hawaii.edu/gshhg/gshhg-shp-2.3.7.zip",
+        ),
         "gshhg-shp-2.3.7.zip",
+        "8dbbe7e071e77e9e75f2d639239099ebca8d5c16d6a07df8169729d49f15cf41",
     ),
 }
 NATURAL_EARTH_FILES = (
@@ -66,16 +74,38 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def download(url: str, target: Path) -> None:
+def download(
+    url: str | tuple[str, ...],
+    target: Path,
+    expected_sha256: str | None = None,
+) -> str:
+    urls = (url,) if isinstance(url, str) else url
     if target.exists() and target.stat().st_size:
-        return
+        if expected_sha256 is None or sha256(target) == expected_sha256:
+            return "cache"
+        raise RuntimeError(f"cached download SHA-256 mismatch: {target}")
     target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_suffix(target.suffix + ".part")
-    print(f"acquire {url} -> {target.relative_to(ROOT)}", flush=True)
-    request = urllib.request.Request(url, headers={"User-Agent": "MGRB/1.0 public-data-build"})
-    with urllib.request.urlopen(request, timeout=180) as response, partial.open("wb") as output:
-        shutil.copyfileobj(response, output, length=1024 * 1024)
-    partial.replace(target)
+    failures = []
+    for candidate in urls:
+        print(f"acquire {candidate} -> {target.relative_to(ROOT)}", flush=True)
+        request = urllib.request.Request(
+            candidate,
+            headers={"User-Agent": "MGRB/1.0 public-data-build"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=180) as response, partial.open(
+                "wb"
+            ) as output:
+                shutil.copyfileobj(response, output, length=1024 * 1024)
+            if expected_sha256 is not None and sha256(partial) != expected_sha256:
+                raise RuntimeError(f"download SHA-256 mismatch: {candidate}")
+            partial.replace(target)
+            return candidate
+        except (OSError, RuntimeError) as error:
+            partial.unlink(missing_ok=True)
+            failures.append(f"{candidate}: {type(error).__name__}: {error}")
+    raise RuntimeError("all download locations failed:\n" + "\n".join(failures))
 
 
 def extract(archive: Path, target: Path) -> None:
@@ -272,14 +302,16 @@ def main() -> None:
 
     acquisitions = []
     extracted = RAW / "extracted"
-    for source_id, (url, filename) in DOWNLOADS.items():
+    for source_id, (urls, filename, expected_sha256) in DOWNLOADS.items():
         archive = RAW / "downloads" / filename
-        download(url, archive)
+        retrieval_url = download(urls, archive, expected_sha256)
         extract(archive, extracted / source_id)
         acquisitions.append(
             {
                 "source_id": source_id,
-                "url": url,
+                "url": urls[0],
+                "alternate_urls": list(urls[1:]),
+                "retrieval_url": retrieval_url,
                 "path": archive.relative_to(ROOT).as_posix(),
                 "bytes": archive.stat().st_size,
                 "sha256": sha256(archive),

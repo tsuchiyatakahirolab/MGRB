@@ -38,9 +38,11 @@ sources:
     version: "2.3.7"
     released: "2017-06-15"
     homepage: "https://www.soest.hawaii.edu/pwessel/gshhg/"
-    download: "https://ftp.soest.hawaii.edu/gshhg/gshhg-shp-2.3.7.zip"
+    download: "https://github.com/GenericMappingTools/gshhg-gmt/releases/download/2.3.7/gshhg-shp-2.3.7.zip"
+    alternate_download: "https://ftp.soest.hawaii.edu/gshhg/gshhg-shp-2.3.7.zip"
+    archive_sha256: "8dbbe7e071e77e9e75f2d639239099ebca8d5c16d6a07df8169729d49f15cf41"
     licence: "GNU LGPL"
-    acquisition: "Download shapefile distribution from SOEST/NOAA source."
+    acquisition: "Download pinned shapefile distribution from the official Generic Mapping Tools release, with SOEST as fallback."
     role: "high_resolution_coastline_optional"
     allowed_use: "use and redistribution under GNU LGPL"
     attribution_required: true
