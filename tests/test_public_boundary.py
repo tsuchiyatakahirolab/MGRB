@@ -22,11 +22,12 @@ def test_nested_archive_cannot_hide_private_source_or_browser_profile():
     assert audit_payload("assets.zip", archive("browser-profile/Default/Cookies", b"fixture"))
 
 
-def test_disguised_database_and_path_traversal_are_blocked():
-    db = sqlite3.connect(":memory:")
+def test_disguised_database_and_path_traversal_are_blocked(tmp_path: Path):
+    path = tmp_path / "image.png"
+    db = sqlite3.connect(path)
     db.execute("create table placeholder(value text)")
-    assert any("unapproved-database" in f for f in audit_payload("image.png", db.serialize()))
     db.close()
+    assert any("unapproved-database" in f for f in audit_payload("image.png", path.read_bytes()))
     assert audit_payload("demo.zip", archive("../outside", b"fixture"))
 
 
