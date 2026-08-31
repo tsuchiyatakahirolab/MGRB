@@ -4,6 +4,7 @@ import argparse
 import importlib.util
 import json
 import platform
+import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -88,7 +89,9 @@ def main() -> None:
     median.add_argument("--balance-tolerance-m", type=float, default=750.0)
 
     b = sub.add_parser("build", aliases=["build-region"])
-    b.add_argument("region")
+    b.add_argument("region", nargs="?")
+    b.add_argument("--spec", type=Path, help="Versioned MGRB Build Spec JSON")
+    b.add_argument("--validate-spec", action="store_true", help="Validate --spec without building")
     b.add_argument("--config", type=Path, default=Path("config/regions.yml"))
     b.add_argument("--output", default="build/outputs")
     b.add_argument("--output-root", type=Path)
@@ -154,13 +157,18 @@ def main() -> None:
         from .official import verify_target
 
         result = verify_target(
-            args.target, receipt_path=args.receipt, artifact=args.artifact,
+            args.target,
+            receipt_path=args.receipt,
+            artifact=args.artifact,
             development_key=args.development_key,
         )
         print(json.dumps(result, indent=2))
-        raise SystemExit(0 if result.get("signature_valid") and (
-            result.get("file_verified") or result["status"].endswith("FILE_UNCHECKED")
-        ) else 1)
+        raise SystemExit(
+            0
+            if result.get("signature_valid")
+            and (result.get("file_verified") or result["status"].endswith("FILE_UNCHECKED"))
+            else 1
+        )
     if args.cmd == "doctor":
         raise SystemExit(doctor())
     if args.cmd == "ui":
@@ -207,6 +215,44 @@ def main() -> None:
         print(output)
         return
     if args.cmd in {"build", "build-region"}:
+        if args.spec:
+            from .build_spec import load_build_spec
+
+            allowed = {"--spec", "--validate-spec", "--output-root", "--output-name"}
+            overrides = {
+                token.split("=", 1)[0]
+                for token in sys.argv[1:]
+                if token.startswith("--") and token.split("=", 1)[0] not in allowed
+            }
+            if args.region or overrides:
+                p.error(
+                    "--spec allows only --validate-spec, --output-root and --output-name; edit choices in the spec"
+                )
+            spec = load_build_spec(args.spec.resolve(), ROOT)
+            if args.validate_spec:
+                print(json.dumps({"ok": True, "build_spec": spec.to_dict()}, indent=2))
+                return
+            result, archive = execute_product_build(
+                spec,
+                output_root=args.output_root or Path(args.output),
+                repository_root=ROOT,
+                build_id=args.output_name
+                or f"MGRB-{spec.area}-{datetime.now(timezone.utc).strftime('%Y%m%d')}",
+            )
+            print(
+                json.dumps(
+                    {
+                        "ok": True,
+                        "build_id": result.build_id,
+                        "output": str(result.output),
+                        "portable_archive": str(archive),
+                    },
+                    indent=2,
+                )
+            )
+            return
+        if args.validate_spec or not args.region:
+            p.error("Provide a region or --spec; --validate-spec requires --spec")
         regions = load_regions(args.config)
         if args.region not in regions:
             raise SystemExit(f"Unknown region: {args.region}")

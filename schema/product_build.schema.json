@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "MGRB ProductBuildSpec v1.1 contract",
+  "title": "MGRB versioned Build Spec contract, schema mgrb-build-spec-1",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -127,6 +127,26 @@
       "items": {
         "type": "string"
       }
+    },
+    "schema_version": {
+      "const": "mgrb-build-spec-1"
+    },
+    "mgrb_version": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "qc": {
+      "const": {
+        "coordinate_validation": "wgs84",
+        "duplicate_policy": "flag",
+        "track_gap_seconds": 3600
+      }
     }
+  },
+  "dependentRequired": {
+    "schema_version": [
+      "mgrb_version",
+      "qc"
+    ]
   }
 }

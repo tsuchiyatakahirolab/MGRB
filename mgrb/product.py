@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 from pyproj import CRS
 
+from . import __version__
 from .config import load_regions
 from .layer_registry import LayerRegistry
 
@@ -118,8 +119,29 @@ class ProductBuildSpec:
     start_date: str | None = None
     end_date: str | None = None
     actors: tuple[str, ...] = ()
+    schema_version: str = "mgrb-build-spec-1"
+    mgrb_version: str = __version__
+    qc: dict[str, Any] = field(
+        default_factory=lambda: {
+            "coordinate_validation": "wgs84",
+            "duplicate_policy": "flag",
+            "track_gap_seconds": 3600,
+        }
+    )
 
     def validate(self, root: Path) -> None:
+        if self.schema_version != "mgrb-build-spec-1":
+            raise ValueError("Unsupported Build Spec schema version")
+        if self.mgrb_version != __version__:
+            raise ValueError("Build Spec MGRB version differs from this Core installation")
+        if self.qc != {
+            "coordinate_validation": "wgs84",
+            "duplicate_policy": "flag",
+            "track_gap_seconds": 3600,
+        }:
+            raise ValueError(
+                "Unsupported QC settings; this contract pins current Core QC semantics"
+            )
         regions = load_regions(root / "config" / "regions.yml")
         if self.area != "custom" and self.area not in regions:
             raise ValueError(f"Unknown area: {self.area}")
@@ -183,6 +205,16 @@ class ProductBuildSpec:
             start_date=str(payload["start_date"]) if payload.get("start_date") else None,
             end_date=str(payload["end_date"]) if payload.get("end_date") else None,
             actors=tuple(str(value) for value in payload.get("actors", ())),
+            schema_version=payload.get("schema_version", "mgrb-build-spec-1"),
+            mgrb_version=payload.get("mgrb_version", __version__),
+            qc=payload.get(
+                "qc",
+                {
+                    "coordinate_validation": "wgs84",
+                    "duplicate_policy": "flag",
+                    "track_gap_seconds": 3600,
+                },
+            ),
         )
 
 

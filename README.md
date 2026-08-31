@@ -133,6 +133,9 @@ python -m pytest -q
 
 ## CLI
 
+Unreleased v1.1 also accepts a [versioned Build Spec](docs/build-spec.md) with
+`mgrb build --spec mgrb-build-spec.json`.
+
 ```bash
 mgrb regions
 mgrb layers
