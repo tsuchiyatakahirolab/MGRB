@@ -25,3 +25,12 @@ Before proposing a merge or release:
 
 ## Release rule
 A tagged release must be reproducible from public inputs and must not depend on any private dataset.
+
+## Public/private development boundary
+Follow ARCHITECTURE_BOUNDARIES.md, FORK_POLICY.md and TRADEMARK_POLICY.md.
+Generic research functionality and public verification remain open. New distinctive
+hosted UX, protected analytics/orchestration, premium rendering, watermark secret
+operations and signing authority belong in private MGRB-Web, never in this tree.
+Do not publish source maps or private server source as browser assets. Do not add
+private/local evidence-package links to public documentation. Owner-approved
+aggregate audit findings remain public; that approval does not extend to their inputs.

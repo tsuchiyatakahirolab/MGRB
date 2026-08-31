@@ -1,5 +1,9 @@
 # MGRB
 
+MGRB Core welcomes forks and research reuse under Apache-2.0. See the
+[fork policy](FORK_POLICY.md), [identity policy](TRADEMARK_POLICY.md), and
+[public/private architecture](ARCHITECTURE_BOUNDARIES.md).
+
 ## Maritime Geospatial Research Base
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22172475.svg)](https://doi.org/10.5281/zenodo.22172475)
