@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MGRB export receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "algorithm",
+    "build_id",
+    "build_spec_sha256",
+    "created_at",
+    "export_id",
+    "file_sha256",
+    "mgrb_version",
+    "purpose",
+    "schema",
+    "signature",
+    "signing_key_id",
+    "source_manifest_sha256",
+    "watermark_payload_hash"
+  ],
+  "properties": {
+    "signing_key_id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "mgrb_version": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "export_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "schema": {
+      "const": "mgrb-export-receipt-1"
+    },
+    "build_spec_sha256": {
+      "type": "string",
+      "maxLength": 160,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "file_sha256": {
+      "type": "string",
+      "maxLength": 160,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "algorithm": {
+      "const": "Ed25519"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/]{86}==$"
+    },
+    "source_manifest_sha256": {
+      "type": "string",
+      "maxLength": 160,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "build_id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "watermark_payload_hash": {
+      "type": "string",
+      "maxLength": 160,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "purpose": {
+      "enum": [
+        "DEVELOPMENT_NOT_OFFICIAL",
+        "OFFICIAL_MGRB"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    }
+  }
+}

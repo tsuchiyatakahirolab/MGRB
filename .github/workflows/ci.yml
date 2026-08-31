@@ -15,6 +15,8 @@ jobs:
         python-version: ["3.10", "3.12"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -26,3 +28,5 @@ jobs:
         run: pytest -q
       - name: Lint
         run: ruff check mgrb scripts tests
+      - name: Public boundary including reachable history
+        run: python scripts/check_public_boundary.py --git-ref HEAD --git-ref origin/main

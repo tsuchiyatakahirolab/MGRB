@@ -1,0 +1,15 @@
+{
+  "schema": "mgrb-export-receipt-1",
+  "purpose": "DEVELOPMENT_NOT_OFFICIAL",
+  "algorithm": "Ed25519",
+  "export_id": "0dc32214-b81b-4fd6-a965-21e9dfe3ea58",
+  "build_id": "public-contract-fixture",
+  "mgrb_version": "1.1.0.dev0",
+  "created_at": "2026-08-31T06:04:58Z",
+  "file_sha256": "e4a78f6d00285d0f8099e85727223d5559344b049d32aa0d2af4789631e759dd",
+  "build_spec_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "source_manifest_sha256": "ee91a2548af279c4483a7552b7d01489fcd18e86222021b3cefcf039c471e4ce",
+  "watermark_payload_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "signing_key_id": "dev-63e729fd5abef37c",
+  "signature": "lVulvhuCWIpum8J1z0eOHAjsH/a1G8JlpSw9UbkZowcwbDAqqqSG7viZp4juru8wvYLt24sKNQHP+JzkIPdNAw=="
+}

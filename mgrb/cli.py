@@ -69,6 +69,12 @@ def main() -> None:
     v = sub.add_parser("verify")
     v.add_argument("generated_file", type=Path)
 
+    official = sub.add_parser("verify-official")
+    official.add_argument("target", type=Path)
+    official.add_argument("--receipt", type=Path)
+    official.add_argument("--file", type=Path, dest="artifact")
+    official.add_argument("--development-key", type=Path)
+
     vm = sub.add_parser("verify-manifest")
     vm.add_argument("manifest", type=Path)
     vm.add_argument("root", type=Path)
@@ -144,6 +150,17 @@ def main() -> None:
     )
 
     args = p.parse_args()
+    if args.cmd == "verify-official":
+        from .official import verify_target
+
+        result = verify_target(
+            args.target, receipt_path=args.receipt, artifact=args.artifact,
+            development_key=args.development_key,
+        )
+        print(json.dumps(result, indent=2))
+        raise SystemExit(0 if result.get("signature_valid") and (
+            result.get("file_verified") or result["status"].endswith("FILE_UNCHECKED")
+        ) else 1)
     if args.cmd == "doctor":
         raise SystemExit(doctor())
     if args.cmd == "ui":

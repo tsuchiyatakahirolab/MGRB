@@ -1,0 +1,2 @@
+# Signed fixtures must retain their exact bytes across Windows/Linux checkouts.
+tests/fixtures/authenticity/development.txt -text

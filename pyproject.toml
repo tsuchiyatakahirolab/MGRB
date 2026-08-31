@@ -21,7 +21,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6"]
+dev = ["pytest>=8", "ruff>=0.6", "cryptography>=46.0.5,<47"]
+authenticity = ["cryptography>=46.0.5,<47"]
 
 [project.scripts]
 mgrb = "mgrb.cli:main"
