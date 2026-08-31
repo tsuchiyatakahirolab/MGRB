@@ -236,7 +236,7 @@ queries now cover all 195 entities, with full Vessel Search pagination. There ar
 not raw individual tracks; actual raw positions retrieved remain zero. The 17
 previous bulk matches all resolve, and 26 of the previous 42 auth-unverified
 entities now resolve under the stated rules. UI track/CSV/GeoJSON export validation
-still requires manual owner evidence. See the local
-[R3C-B owner review](r3cb-gfw-auth/R3CB_OWNER_REVIEW.md) for hashes, caveats, AOI
-event-position tests and separately recorded interface licenses. The historical
+still requires manual owner evidence. These aggregate results were validated in
+the authenticated R3C audit; validation evidence is retained privately by the
+project owner. The historical
 R3/R3C snapshots are retained, not rewritten as authenticated results.

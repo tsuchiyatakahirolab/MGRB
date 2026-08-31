@@ -83,7 +83,7 @@ authenticated API with complete pagination: 179 entities matched, including all
 17 prior bulk matches and 26 of the previous 42 auth-unverified entities. Events
 were retrieved for 173 entities (57,922 event records). These do not constitute
 raw tracks. UI/CSV/GeoJSON validation remains manual and no raw position API
-endpoint was found in the documented interface inventory. See the local
-[authenticated owner review](../r3cb-gfw-auth/R3CB_OWNER_REVIEW.md) for the new
-evidence package; do not combine these counts with the historical bulk-only
+endpoint was found in the documented interface inventory. These aggregate
+results were validated in the authenticated R3C audit; validation evidence is
+retained privately by the project owner. Do not combine these counts with the historical bulk-only
 denominators or infer that unresolved identities are non-transmitting vessels.

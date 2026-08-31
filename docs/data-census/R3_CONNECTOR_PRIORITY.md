@@ -129,5 +129,6 @@ production integration decision or license review. The audit found identity and
 event geometry, with zero verified raw position records. UI-visible tracks and
 CSV/GeoJSON exports remain manual-validation pending. The PANGAEA Xue Long
 3,186-position public benchmark is unchanged. No production connector is
-implemented or authorized by this follow-up. See the local
-[R3C-B owner review](r3cb-gfw-auth/R3CB_OWNER_REVIEW.md).
+implemented or authorized by this follow-up. These aggregate findings were
+validated in the authenticated R3C audit; validation evidence is retained
+privately by the project owner.
